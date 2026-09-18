@@ -10,7 +10,7 @@ and takes the waste they collect.
 This repository IS the mod, so it can be cloned straight into your mods folder:
 
 ```sh
-git clone <this repo> "RimWorld/Mods/Riimba"
+git clone https://github.com/kanid99/SloppyMod-Riimba.git "RimWorld/Mods/Riimba"
 ```
 
 Then build the assembly (below) and enable it in the mod list. A release copy needs only:
