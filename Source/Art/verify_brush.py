@@ -13,9 +13,8 @@ So this checks two things mechanically:
      from its own BRUSH_ALONG / BRUSH_OUT constants, and the draw size matches the crop
      the brush texture was cut at.
 
-  2. Compositing the brush texture onto each body sprite at those offsets reproduces the
-     old baked-in sprite - that is, the brush lands on the same pixels it used to occupy
-     back when it was painted into the body.
+  2. Placing the brush UNDER each body sprite at those offsets leaves a sensible amount of
+     it showing past the shell - not swallowed whole, not floating clear of the machine.
 
 Check 2 is the one that matters, because check 1 only proves two files agree about a
 number, not that the number is right.
@@ -90,18 +89,38 @@ def hub_pixels(rotation):
     return offsets[rotation]
 
 
-def composite_check(rotation, failures):
-    """Paste the brush onto the body at the computed spot and compare with the original.
+# How much of the brush should still be visible once the shell is drawn over it. The hub
+# sits just inside the rim, so roughly a fifth is swallowed and the rest reaches past it -
+# it measures a shade under 78% for all three rotations.
+#
+# The band matters in both directions. Near 100% means the brush has drifted off the
+# machine and is floating beside it; far below means it has slid under the disc and the
+# player sees nothing turning at all. Either way nothing errors at run time, which is the
+# whole reason this is checked here.
+MIN_VISIBLE = 0.50
+MAX_VISIBLE = 0.95
 
-    The original is the sprite as it was when the brush was still painted in, recovered
-    from git rather than kept as a second copy in the tree.
+ALPHA_THRESHOLD = 40
+
+
+def opaque_mask(image):
+    return [a > ALPHA_THRESHOLD for a in image.split()[3].tobytes()]
+
+
+def composite_check(rotation, failures):
+    """Place the brush UNDER the body, the way CompRiimbaUnit.PostDraw does, and check
+    that a sensible amount of it still reaches past the shell.
+
+    Under, not over: the brush is mounted on the underside of the disc. Drawing it on top
+    reads as a spinner sitting on the lid, and an earlier version of this script composited
+    it the wrong way round and so agreed with a C# bug that did the same.
     """
     body_path = os.path.join(TEXTURE_DIR, f"Riimba_{rotation}.png")
     brush_path = os.path.join(TEXTURE_DIR, "RiimbaBrush.png")
 
     if not (os.path.exists(body_path) and os.path.exists(brush_path)):
         failures.append(f"{rotation}: missing texture ({body_path} or {brush_path})")
-        return
+        return None
 
     body = Image.open(body_path).convert("RGBA")
     brush = Image.open(brush_path).convert("RGBA")
@@ -110,22 +129,30 @@ def composite_check(rotation, failures):
     cx = body.width / 2 + dx
     cy = body.height / 2 + dy
 
-    composed = body.copy()
-    composed.alpha_composite(brush, (int(round(cx - brush.width / 2)),
-                                     int(round(cy - brush.height / 2))))
-
-    # The brush must actually land ON the composite somewhere it was not before, and the
-    # hub must sit within the sprite - a brush centred outside the texture would be half
-    # clipped in game.
     if not (0 <= cx < body.width and 0 <= cy < body.height):
         failures.append(f"{rotation}: hub at ({cx:.1f},{cy:.1f}) is outside the {body.width}px sprite")
-        return
+        return None
 
-    if ImageChops.difference(body, composed).getbbox() is None:
-        failures.append(f"{rotation}: compositing the brush changed nothing - it is being "
-                        f"drawn somewhere already opaque, or off the canvas")
+    layer = Image.new("RGBA", body.size, (0, 0, 0, 0))
+    layer.alpha_composite(brush, (int(round(cx - brush.width / 2)),
+                                  int(round(cy - brush.height / 2))))
 
-    return composed
+    brush_mask = opaque_mask(layer)
+    body_mask = opaque_mask(body)
+
+    total = sum(brush_mask)
+    visible = sum(1 for b, o in zip(brush_mask, body_mask) if b and not o)
+    fraction = visible / total if total else 0.0
+
+    if not MIN_VISIBLE <= fraction <= MAX_VISIBLE:
+        failures.append(
+            f"{rotation}: {fraction:.1%} of the brush shows past the shell, outside the "
+            f"{MIN_VISIBLE:.0%}-{MAX_VISIBLE:.0%} band - it is either swallowed by the body "
+            f"or floating clear of it")
+
+    composed = layer.copy()
+    composed.alpha_composite(body)
+    return fraction
 
 
 def main():
@@ -147,10 +174,11 @@ def main():
         failures.append(f"brushTexPath: def says {tex}, textures are at {expected_tex}")
 
     for rotation in ("south", "north", "east"):
-        composed = composite_check(rotation, failures)
-        if composed is not None:
+        fraction = composite_check(rotation, failures)
+        if fraction is not None:
             dx, dy = hub_pixels(rotation)
-            print(f"{rotation:>14}: hub at ({dx:+.1f},{dy:+.1f})px from centre, brush lands on sprite")
+            print(f"{rotation:>14}: hub ({dx:+.1f},{dy:+.1f})px from centre, "
+                  f"{fraction:.1%} of the brush visible past the shell")
 
     if failures:
         print("\nFAILED:")

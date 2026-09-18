@@ -94,8 +94,12 @@ to the chassis shadow to give false positives.
 
 The brush spins while a unit is working, so it cannot be painted into the body the way
 everything else is. `riimba_unit.py` writes it to its own `RiimbaBrush.png` and the body
-sprites are drawn without it; `CompRiimbaUnit.PostDraw` then draws it over the body at a
+sprites are drawn without it; `CompRiimbaUnit.PostDraw` then draws it UNDER the body at a
 per-facing offset and turns it a few degrees per tick.
+
+Under, because the brush is mounted on the underside of the disc: only the part that
+reaches past the rim should show, and the shell should hide the rest. It shipped drawing
+on top for one commit, where it read as a spinner sitting on the lid.
 
 Two details make that work:
 
@@ -114,8 +118,11 @@ regenerates the textures.
 
 That is a number living in two places, so `verify_brush.py` checks they agree: it reads the
 def, recomputes the offsets from the art script's own `BRUSH_ALONG` / `BRUSH_OUT`, and
-composites the brush onto each body sprite to confirm it lands on the machine rather than
-off the edge of it. This was checked once by hand against the sprites from before the split,
+composites the brush under each body sprite and measures how much of it still reaches past
+the shell - a shade under 78% in every rotation. The band it allows is 50% to 95%, which is
+narrow in both directions on purpose: near 100% means the brush has drifted off the machine,
+far below means it has slid under the disc and nothing visibly turns. The over-the-top bug
+scores exactly 100%, so this check now fails it. This was checked once by hand against the sprites from before the split,
 and the recomposited image is pixel-identical to the old baked-in one apart from resampling
 inside the brush's own footprint.
 

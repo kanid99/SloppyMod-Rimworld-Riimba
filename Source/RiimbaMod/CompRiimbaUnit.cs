@@ -20,7 +20,7 @@ namespace RiimbaMod
         // waste item at the station's default threshold.
         public float binCapacity = 6.0f;
 
-        // The side brush is drawn separately from the body and spun while the unit works, so
+        // The side brush is drawn separately, under the body, and spun while the unit works, so
         // its position has to be described here rather than baked into the body sprite.
         //
         // along/out are the hub's offset from the disc's centre in cells, resolved against the
@@ -358,9 +358,15 @@ namespace RiimbaMod
 
             Vector3 position = parent.DrawPos + BrushOffset(parent.Rotation);
 
-            // One altitude increment above the body, so the brush sits on top of the shell
-            // rather than z-fighting with it.
-            position.y += Altitudes.AltInc;
+            // BELOW the body, not above it. The brush is mounted on the underside of the
+            // disc: only the part that reaches past the rim should be visible, and the shell
+            // should hide the rest. Drawn on top it reads as a spinner sitting on the lid.
+            //
+            // A full altitude increment down clears the pawn's whole render tree. Node layers
+            // are applied as layer * 0.0003658537 clamped to [-10, 100] (PawnRenderUtility),
+            // so the deepest any node can sit is -0.0037 and the highest is one increment; a
+            // full increment down is under all of them without straying into the layer below.
+            position.y -= Altitudes.AltInc;
 
             Matrix4x4 matrix = Matrix4x4.TRS(
                 position,
