@@ -20,6 +20,22 @@ namespace RiimbaMod
         // waste item at the station's default threshold.
         public float binCapacity = 6.0f;
 
+        // The side brush is drawn separately from the body and spun while the unit works, so
+        // its position has to be described here rather than baked into the body sprite.
+        //
+        // along/out are the hub's offset from the disc's centre in cells, resolved against the
+        // facing: "out" is towards the front, "along" is sideways. Both come straight out of
+        // Source/Art/riimba_unit.py, which prints them when it regenerates the textures, and
+        // verify_brush.py fails the build if the two ever disagree.
+        public string brushTexPath = "Things/Pawn/Riimba/RiimbaBrush";
+        public float brushAlong = 0.198f;
+        public float brushOut = 0.3841f;
+        public float brushDrawSize = 0.275f;
+
+        // About one turn every two seconds at normal speed. Fast enough to read as spinning,
+        // slow enough not to strobe against the 60-tick second.
+        public float brushDegreesPerTick = 3.0f;
+
         public CompProperties_RiimbaUnit()
         {
             compClass = typeof(CompRiimbaUnit);
@@ -51,6 +67,11 @@ namespace RiimbaMod
         // relation is dropped - but not before the release job that spawned it has finished, which
         // is why this happens on the first tick rather than in PostSpawnSetup.
         private bool overseerRelationChecked;
+
+        // Not saved. It is a drawing detail with no bearing on anything, and a brush that
+        // resumes from a different angle after a reload is not something anyone can notice.
+        private float brushAngle;
+        private Material brushMaterial;
 
         public CompProperties_RiimbaUnit Props => (CompProperties_RiimbaUnit)props;
 
@@ -118,6 +139,12 @@ namespace RiimbaMod
                 // find another one if the player builds it.
                 station = null;
             }
+
+            // Driven off ticks rather than frame time so it stops dead when the game is paused
+            // and speeds up with the game speed, which is how every other moving thing on the
+            // map behaves.
+            if (IsBrushSpinning)
+                brushAngle = (brushAngle + Props.brushDegreesPerTick * delta) % 360f;
 
             if (IsDockedAndCharging)
                 GainCharge(delta, Props.chargeGainPerDayDocked);
@@ -269,6 +296,78 @@ namespace RiimbaMod
                 return;
 
             unit.relations.RemoveDirectRelation(PawnRelationDefOf.Overseer, overseer);
+        }
+
+        // The brush turns while the unit is on a cleaning job, which covers driving to the next
+        // mess as well as scrubbing one - the goto is part of that job. Everything else, including
+        // sitting on a bay, leaves it still.
+        private bool IsBrushSpinning => parent.Spawned
+            && !Unit.Dead
+            && !Unit.Downed
+            && Unit.CurJobDef == RiimbaDefOf.Riimba_Clean;
+
+        private Material BrushMaterial
+        {
+            get
+            {
+                if (brushMaterial == null && !Props.brushTexPath.NullOrEmpty())
+                    brushMaterial = MaterialPool.MatFrom(Props.brushTexPath, ShaderDatabase.Cutout);
+
+                return brushMaterial;
+            }
+        }
+
+        // The hub's offset from the pawn's centre for a given facing, built the same way
+        // Source/Art/riimba_unit.py builds it: "out" towards the front, "along" to one side.
+        //
+        // West is the east offset mirrored in x, because Graphic_Multi draws west by flipping
+        // the east body sprite - so the brush has to flip with it or it would swap sides.
+        private Vector3 BrushOffset(Rot4 rotation)
+        {
+            float along = Props.brushAlong;
+            float o = Props.brushOut;
+
+            if (rotation == Rot4.South)
+                return new Vector3(-along, 0f, -o);
+            if (rotation == Rot4.North)
+                return new Vector3(along, 0f, o);
+            if (rotation == Rot4.East)
+                return new Vector3(o, 0f, -along);
+
+            return new Vector3(-o, 0f, -along);
+        }
+
+        // Pawn.DrawAt calls Comps_PostDraw, so a comp can draw on a pawn without replacing its
+        // render tree. That matters here: the alternative was giving Riimba its own
+        // PawnRenderTreeDef, which would mean restating the body, wound and carried-thing nodes
+        // and re-checking them against every future version, all to hang one spinning quad off
+        // the machine.
+        public override void PostDraw()
+        {
+            base.PostDraw();
+
+            Material material = BrushMaterial;
+            if (material == null || !parent.Spawned)
+                return;
+
+            // A downed pawn is drawn lying down - the renderer turns the body ninety degrees -
+            // so the offsets below, which assume an upright disc seen from above, would put the
+            // brush somewhere beside the wreck. A downed unit simply shows no brush.
+            if (Unit.Downed || Unit.Dead)
+                return;
+
+            Vector3 position = parent.DrawPos + BrushOffset(parent.Rotation);
+
+            // One altitude increment above the body, so the brush sits on top of the shell
+            // rather than z-fighting with it.
+            position.y += Altitudes.AltInc;
+
+            Matrix4x4 matrix = Matrix4x4.TRS(
+                position,
+                Quaternion.AngleAxis(brushAngle, Vector3.up),
+                new Vector3(Props.brushDrawSize, 1f, Props.brushDrawSize));
+
+            Graphics.DrawMesh(MeshPool.plane10, matrix, material, 0);
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()

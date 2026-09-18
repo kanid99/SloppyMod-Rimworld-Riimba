@@ -101,6 +101,14 @@ When the bin fills or the charge runs low it drives itself back to a docking bay
         <returnChargeFraction>0.25</returnChargeFraction>
         <!-- Enough filth for roughly six items of waste before a trip back. -->
         <binCapacity>6.0</binCapacity>
+        <!-- The side brush is its own texture, drawn over the body and spun while the unit
+             works. These come out of Source/Art/riimba_unit.py, which prints them whenever it
+             regenerates the sprites; verify_brush.py fails if this and the art disagree. -->
+        <brushTexPath>Things/Pawn/Riimba/RiimbaBrush</brushTexPath>
+        <brushAlong>0.198</brushAlong>
+        <brushOut>0.3841</brushOut>
+        <brushDrawSize>0.275</brushDrawSize>
+        <brushDegreesPerTick>3.0</brushDegreesPerTick>
       </li>
     </comps>
   </ThingDef>

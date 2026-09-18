@@ -158,48 +158,60 @@ def draw_handle(draw):
          fill=SHELL_LIT, width=1.5)
 
 
-def draw_brush(draw, facing):
-    """The side brush: a bristle spinner on a short arm, clear of the shell.
+# Where the brush hub sits relative to the disc's centre, as multiples of R. The body
+# sprites no longer draw the brush at all - it is its own texture now, positioned and
+# spun at run time - but these still define where it goes, and the C# has to agree with
+# them or the brush floats off the machine. verify_brush.py checks that it does.
+BRUSH_ALONG = 0.50
+BRUSH_OUT = 0.97
 
-    Sited so the WHOLE spinner is outside the silhouette. An earlier version put the
-    hub at 0.88R and the shell covered most of it, leaving three bristles poking out
-    that read as twigs caught under the machine rather than as a part of it.
+# Canvas for the standalone brush. Deliberately a crop of the SAME 256px sprite scale,
+# so the brush keeps its original size in game: 64/256 of the body's drawSize.
+BRUSH_SIZE = 64
 
-    Offset to one side rather than centred on the front, because that is where it is on
-    the real thing, and because a centred spinner on a symmetric disc reads as a
-    propeller.
-    """
-    import math
 
-    along = R * 0.50
-    # Just far enough out that the whole spinner clears the shell, close enough that
-    # its hub still touches the rim - any further and it reads as debris lying beside
-    # the unit rather than as part of it.
-    out = R * 0.97
+def brush_hub(facing):
+    """Hub position in body-sprite pixels, measured from the sprite's centre."""
+    along = R * BRUSH_ALONG
+    out = R * BRUSH_OUT
 
     if facing == "down":
-        x, y = CX - along, CY + out
-    elif facing == "up":
-        x, y = CX + along, CY - out
-    else:
-        x, y = CX + out, CY + along
+        return -along, out
+    if facing == "up":
+        return along, -out
+    return out, along
 
+
+def view_brush():
+    """The spinner alone, hub dead centre.
+
+    Centred is the whole point: the C# rotates this quad about its own middle, so an
+    off-centre hub would make the brush orbit a point beside itself instead of turning
+    on the spot.
+
+    Drawn at the body's scale rather than blown up to fill the canvas, so it stays the
+    size it always was once the two are composited back together in game.
+    """
+    image, draw = new_canvas(BRUSH_SIZE, BRUSH_SIZE)
+    cx = cy = BRUSH_SIZE / 2
     spin = R * 0.26
 
-    # Bristles first, so the hub caps them. Six, not three: three reads as a hazard
-    # symbol, six reads as a brush.
+    import math
+
     for i in range(6):
         angle = i * 60 + 15
-        ax = x + spin * math.cos(math.radians(angle))
-        ay = y + spin * math.sin(math.radians(angle))
-        line(draw, [(x, y), (ax, ay)], fill=BRUSH_DARK, width=5)
-        line(draw, [(x, y), (ax, ay)], fill=BRUSH, width=2.5)
+        ax = cx + spin * math.cos(math.radians(angle))
+        ay = cy + spin * math.sin(math.radians(angle))
+        line(draw, [(cx, cy), (ax, ay)], fill=BRUSH_DARK, width=5)
+        line(draw, [(cx, cy), (ax, ay)], fill=BRUSH, width=2.5)
 
     hub = R * 0.12
-    ellipse(draw, (x - hub, y - hub, x + hub, y + hub),
+    ellipse(draw, (cx - hub, cy - hub, cx + hub, cy + hub),
             fill=SHELL_DARK, outline=OUTLINE, width=1)
-    ellipse(draw, (x - hub * 0.45, y - hub * 0.45, x + hub * 0.45, y + hub * 0.45),
+    ellipse(draw, (cx - hub * 0.45, cy - hub * 0.45, cx + hub * 0.45, cy + hub * 0.45),
             fill=SHELL_LIT)
+
+    return finish(image, BRUSH_SIZE, BRUSH_SIZE)
 
 
 def draw_status_led(draw):
@@ -226,7 +238,6 @@ def _place_led(draw, dx, dy):
 def view_south():
     image, draw = new_canvas(SIZE, SIZE)
     draw_wheels(draw, horizontal=True)
-    draw_brush(draw, "down")
     draw_body(draw)
     draw_bumper(draw, "down")
     draw_sensor(draw, "down")
@@ -237,7 +248,6 @@ def view_south():
 def view_north():
     image, draw = new_canvas(SIZE, SIZE)
     draw_wheels(draw, horizontal=True)
-    draw_brush(draw, "up")
     draw_body(draw)
     draw_bumper(draw, "up")
     draw_vents(draw, "down")
@@ -248,13 +258,32 @@ def view_north():
 def view_east():
     image, draw = new_canvas(SIZE, SIZE)
     draw_wheels(draw, horizontal=False)
-    draw_brush(draw, "right")
     draw_body(draw)
     draw_bumper(draw, "right")
     draw_sensor(draw, "right")
     draw_vents(draw, "right")
     _place_led(draw, -1, 0)
     return finish(image, SIZE, SIZE)
+
+
+def brush_offsets_in_cells(body_draw_size=1.1):
+    """The hub offsets the C# needs, converted from sprite pixels into world cells.
+
+    Texture y runs DOWN and RimWorld's z runs UP, so the z component is negated. Getting
+    that inversion wrong would put the brush on the far side of the machine, which is
+    exactly the class of mistake verify_bays.py exists to catch on the station.
+
+    West is not drawn: Graphic_Multi mirrors the east sprite for it, so the brush mirrors
+    with it and its x offset flips sign.
+    """
+    offsets = {}
+    for facing, rot in (("down", "south"), ("up", "north"), ("right", "east")):
+        dx, dy = brush_hub(facing)
+        offsets[rot] = (dx / SIZE * body_draw_size, -dy / SIZE * body_draw_size)
+
+    east_x, east_z = offsets["east"]
+    offsets["west"] = (-east_x, east_z)
+    return offsets
 
 
 def main():
@@ -265,6 +294,16 @@ def main():
         path = os.path.join(out_dir, f"Riimba_{name}.png")
         view().save(path)
         print(f"wrote {path}")
+
+    brush_path = os.path.join(out_dir, "RiimbaBrush.png")
+    view_brush().save(brush_path)
+    print(f"wrote {brush_path}")
+
+    print()
+    print("brush draw size, in cells:", round(BRUSH_SIZE / SIZE * 1.1, 4))
+    print("brush offsets, in cells (x, z) - these must match the comp's XML:")
+    for rot, (x, z) in brush_offsets_in_cells().items():
+        print(f"  {rot:>5}: ({x:+.4f}, {z:+.4f})")
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ pip install pillow
 python3 Source/Art/riimba_unit.py       # the drone, three views
 python3 Source/Art/riimba_station.py    # the station, three rotations
 python3 Source/Art/verify_bays.py       # checks the station art against the C#
+python3 Source/Art/verify_brush.py      # checks the brush geometry against the C#
 python3 Source/Art/make_about_art.py    # store page art, from the above
 ```
 
@@ -89,6 +90,40 @@ The contacts are used as the marker rather than the bay recess because that gold
 only colour that appears nowhere else on the building; the recess tone is close enough
 to the chassis shadow to give false positives.
 
+## The side brush is a separate sprite
+
+The brush spins while a unit is working, so it cannot be painted into the body the way
+everything else is. `riimba_unit.py` writes it to its own `RiimbaBrush.png` and the body
+sprites are drawn without it; `CompRiimbaUnit.PostDraw` then draws it over the body at a
+per-facing offset and turns it a few degrees per tick.
+
+Two details make that work:
+
+* **The hub is dead centre of its own canvas.** The C# rotates that quad about its middle,
+  so a hub drawn off-centre would make the brush orbit a point beside itself rather than
+  turn on the spot.
+* **The canvas is a 64px crop at the body's 256px scale**, not a 64px sprite blown up to
+  fill the frame. That is what keeps the brush the same size it was when it was painted in:
+  its draw size is `64/256 x 1.1` cells.
+
+The offset is described in the def as `brushAlong` and `brushOut` - sideways and forwards
+from the disc's centre, in cells - and resolved against the facing in
+`CompRiimbaUnit.BrushOffset`, with west mirroring east in x because `Graphic_Multi` mirrors
+the east body sprite for west. `riimba_unit.py` prints all four offsets whenever it
+regenerates the textures.
+
+That is a number living in two places, so `verify_brush.py` checks they agree: it reads the
+def, recomputes the offsets from the art script's own `BRUSH_ALONG` / `BRUSH_OUT`, and
+composites the brush onto each body sprite to confirm it lands on the machine rather than
+off the edge of it. This was checked once by hand against the sprites from before the split,
+and the recomposited image is pixel-identical to the old baked-in one apart from resampling
+inside the brush's own footprint.
+
+Drawing it from a comp rather than giving Riimba its own `PawnRenderTreeDef` is deliberate:
+`Pawn.DrawAt` calls `Comps_PostDraw`, so a comp can draw on a pawn without restating the
+body, wound and carried-thing nodes of a render tree and re-checking them against every
+future version, all to hang one spinning quad off the machine.
+
 ## Supersampling
 
 `riimba_draw.py` draws everything at 4x and reduces with LANCZOS. PIL's `ellipse` and
@@ -101,6 +136,7 @@ after the downsample.
 | texture | size | why |
 | --- | --- | --- |
 | `Riimba_*.png` | 256x256 | pawn sprite, drawn at `drawSize 1.1` |
+| `RiimbaBrush.png` | 64x64 | the spinner alone, hub centred, cropped at the body's scale |
 | `RiimbaStation_north/south.png` | 576x192 | 3x1 footprint at 192px per cell, exact |
 | `RiimbaStation_east.png` | 192x576 | the same, axes swapped |
 | `About/Preview.png` | 640x360 | what the workshop shows |
@@ -121,7 +157,8 @@ while a dark disc with one teal eye still reads.
 | script | builds |
 | --- | --- |
 | `riimba_draw.py` | shared primitives, the palette, and the supersampling |
-| `riimba_unit.py` | the drone, north/east/south |
+| `riimba_unit.py` | the drone, north/east/south, and the separate brush sprite |
 | `riimba_station.py` | the station, north/east/south |
 | `verify_bays.py` | checks the station textures against `RiimbaSpots.BayCells` |
+| `verify_brush.py` | checks the brush offsets against `CompRiimbaUnit` and the def |
 | `make_about_art.py` | `About/Preview.png` and `About/ModIcon.png` |
