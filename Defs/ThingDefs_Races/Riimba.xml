@@ -104,7 +104,11 @@ When the bin fills or the charge runs low it drives itself back to a docking bay
         <!-- The side brush is its own texture, drawn under the body and spun while the unit
              works. These come out of Source/Art/riimba_unit.py, which prints them whenever it
              regenerates the sprites; verify_brush.py fails if this and the art disagree. -->
+        <underTexPath>Things/Pawn/Riimba/RiimbaUnder</underTexPath>
+        <faceTexPath>Things/Pawn/Riimba/RiimbaFace</faceTexPath>
         <brushTexPath>Things/Pawn/Riimba/RiimbaBrush</brushTexPath>
+        <bodyDrawSize>1.1</bodyDrawSize>
+        <turnDegreesPerTick>6.0</turnDegreesPerTick>
         <brushAlong>0.198</brushAlong>
         <brushOut>0.3841</brushOut>
         <brushDrawSize>0.275</brushDrawSize>
@@ -124,8 +128,12 @@ When the bin fills or the charge runs low it drives itself back to a docking bay
     <lifeStages>
       <li>
         <bodyGraphicData>
-          <texPath>Things/Pawn/Riimba/Riimba</texPath>
-          <graphicClass>Graphic_Multi</graphicClass>
+          <!-- The shell only. Graphic_Single, not Graphic_Multi, because the disc is
+               rotationally symmetric and must NOT turn: keeping it fixed is what keeps its
+               highlight lit from the top of the screen at every heading. Everything that
+               shows which way the machine points is drawn by CompRiimbaUnit instead. -->
+          <texPath>Things/Pawn/Riimba/RiimbaShell</texPath>
+          <graphicClass>Graphic_Single</graphicClass>
           <shaderType>Cutout</shaderType>
           <drawSize>1.1</drawSize>
           <shadowData>
@@ -135,8 +143,12 @@ When the bin fills or the charge runs low it drives itself back to a docking bay
       </li>
       <li>
         <bodyGraphicData>
-          <texPath>Things/Pawn/Riimba/Riimba</texPath>
-          <graphicClass>Graphic_Multi</graphicClass>
+          <!-- The shell only. Graphic_Single, not Graphic_Multi, because the disc is
+               rotationally symmetric and must NOT turn: keeping it fixed is what keeps its
+               highlight lit from the top of the screen at every heading. Everything that
+               shows which way the machine points is drawn by CompRiimbaUnit instead. -->
+          <texPath>Things/Pawn/Riimba/RiimbaShell</texPath>
+          <graphicClass>Graphic_Single</graphicClass>
           <shaderType>Cutout</shaderType>
           <drawSize>1.1</drawSize>
           <shadowData>

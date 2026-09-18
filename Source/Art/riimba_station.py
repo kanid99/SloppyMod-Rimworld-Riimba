@@ -36,15 +36,22 @@ from riimba_draw import (  # noqa: E402
 
 CELL = 192
 CELLS = 3
+DEPTH = 2                # cells front-to-back
 
 LONG = CELL * CELLS      # 576
-SHORT = CELL             # 192
+SHORT = CELL * DEPTH     # 384
+
+# How far the machine overhangs its own bays, in cells. This band is drawn a second time as
+# a separate texture ABOVE pawn altitude, so a unit reversing in slides under it. Deep enough
+# to swallow the back third of a 1.1-cell disc parked on the bay's centre, no deeper - every
+# extra pixel is also clipped off any colonist who walks onto the bay.
+LIP_DEPTH = 0.35
 
 # How far a bay is cut into the chassis. Kept under a third of the short side: a bay
 # deep enough to swallow the casing would leave the station reading as three separate
 # docks with a bar behind them rather than as one machine.
-BAY_DEPTH = 54
-BAY_WIDTH = 116
+BAY_DEPTH = int(CELL * 0.86)
+BAY_WIDTH = int(CELL * 0.80)
 
 MARGIN = 6
 
@@ -156,49 +163,155 @@ def bay_lamp(draw, cx, cy):
     ellipse(draw, (cx - 5, cy - 5, cx + 5, cy + 5), fill=TEAL)
 
 
+def bay_recess(draw, cx, cy, open_dir):
+    """One bay: a recess open on the side the station faces, with charging contacts at its
+    closed end and a chevron marking which way the docked unit points.
+
+    The chevron faces OUT, not in. Units reverse into these - they drive up nose-first,
+    turn, and back under the overhang - so the nose of a docked unit points out of the bay.
+    """
+    if open_dir in ("up", "down"):
+        half_w, half_d = BAY_WIDTH / 2, BAY_DEPTH / 2
+    else:
+        half_w, half_d = BAY_DEPTH / 2, BAY_WIDTH / 2
+
+    rect(draw, (cx - half_w, cy - half_d, cx + half_w, cy + half_d),
+         fill=SHELL_DARK, radius=8)
+    rect(draw, (cx - half_w + 5, cy - half_d + 5, cx + half_w - 5, cy + half_d - 5),
+         fill=BAY_FLOOR, radius=6)
+
+    # Contacts sit slightly OUTBOARD of the bay's centre, not against its closed end.
+    # Against the closed end they landed under the overhang and were invisible - and
+    # verify_bays.py keys off this gold as its "a bay is here" marker, so a hidden contact
+    # is a broken check as well as wasted pixels.
+    out = {"down": (0, 1), "up": (0, -1), "right": (1, 0)}[open_dir]
+    spread = 28
+    for side in (-1, 1):
+        if out[0]:
+            x = cx + out[0] * (half_w * 0.34)
+            y = cy + side * spread
+        else:
+            x = cx + side * spread
+            y = cy + out[1] * (half_d * 0.34)
+        rect(draw, (x - 8, y - 8, x + 8, y + 8), fill=CONTACT, radius=2)
+
+    size = 18
+    if open_dir == "down":
+        pts = [(cx - size, cy + size * 0.2), (cx, cy + size * 1.1), (cx + size, cy + size * 0.2)]
+    elif open_dir == "up":
+        pts = [(cx - size, cy - size * 0.2), (cx, cy - size * 1.1), (cx + size, cy - size * 0.2)]
+    else:
+        pts = [(cx - size * 0.2, cy - size), (cx + size * 1.1, cy), (cx - size * 0.2, cy + size)]
+    polygon(draw, pts, fill=CASE_LIT)
+
+
+def lip_band(draw, box, shadow_edge):
+    """The overhang: the machine protruding over the closed end of its bays.
+
+    Drawn into the base sprite so the station looks solid, and again into a separate
+    texture that Building_RiimbaStation draws above pawn altitude. A unit reversing in
+    passes under that second copy.
+
+    The dark line along its open edge is what sells it as an overhang rather than a
+    painted stripe - it is the underside catching no light.
+    """
+    x0, y0, x1, y1 = box
+    rect(draw, (x0, y0, x1, y1), fill=CASE)
+    rect(draw, (x0, y0, x1, y1 - (y1 - y0) * 0.55) if shadow_edge == "down"
+         else (x0, y0 + (y1 - y0) * 0.55, x1, y1) if shadow_edge == "up"
+         else (x0, y0, x1 - (x1 - x0) * 0.55, y1), fill=CASE_LIT)
+
+    if shadow_edge == "down":
+        rect(draw, (x0, y1 - 7, x1, y1), fill=OUTLINE)
+    elif shadow_edge == "up":
+        rect(draw, (x0, y0, x1, y0 + 7), fill=OUTLINE)
+    else:
+        rect(draw, (x1 - 7, y0, x1, y1), fill=OUTLINE)
+
+
+def horizontal_geometry(bays_at_top):
+    """Where the rows and the lip sit, for a station facing north or south."""
+    lip_px = CELL * LIP_DEPTH
+
+    if bays_at_top:
+        front_y0, front_y1 = 0, CELL              # bays occupy the top row
+        lip_box = (MARGIN, CELL - lip_px, LONG - MARGIN, CELL)
+        open_dir, shadow = "up", "up"
+        body_y = CELL * 1.5
+    else:
+        front_y0, front_y1 = CELL, SHORT          # bays occupy the bottom row
+        lip_box = (MARGIN, CELL, LONG - MARGIN, CELL + lip_px)
+        open_dir, shadow = "down", "down"
+        body_y = CELL * 0.5
+
+    return front_y0, front_y1, lip_box, open_dir, shadow, body_y
+
+
 def draw_horizontal(bays_at_top):
     image, draw = new_canvas(LONG, SHORT)
     chassis(draw, LONG, SHORT)
 
-    bay_y = MARGIN + 3 + BAY_DEPTH / 2 if bays_at_top else SHORT - MARGIN - 3 - BAY_DEPTH / 2
-    chevron = "down" if bays_at_top else "up"
+    front_y0, front_y1, lip_box, open_dir, shadow, body_y = horizontal_geometry(bays_at_top)
 
-    for i in range(CELLS):
-        bay(draw, CELL * (i + 0.5), bay_y, horizontal=True, chevron_towards=chevron)
-
-    # Everything else goes on the half of the slab the bays did not take.
-    body_y = SHORT * 0.68 if bays_at_top else SHORT * 0.36
-
-    subcore_window(draw, LONG / 2, body_y, 150, 58)
+    subcore_window(draw, LONG / 2, body_y, 150, 62)
     vent_block(draw, CELL * 0.5, body_y, horizontal=True)
     vent_block(draw, CELL * 2.5, body_y, horizontal=True)
 
-    # Lamps sit between each bay and the body, on the strip the bay recess leaves.
-    lamp_y = bay_y + (BAY_DEPTH / 2 + 14) * (1 if bays_at_top else -1)
+    bay_cy = (front_y0 + front_y1) / 2
     for i in range(CELLS):
-        bay_lamp(draw, CELL * (i + 0.5), lamp_y)
+        bay_recess(draw, CELL * (i + 0.5), bay_cy, open_dir)
+
+    lip_band(draw, lip_box, shadow)
+    for i in range(CELLS):
+        bay_lamp(draw, CELL * (i + 0.5), (lip_box[1] + lip_box[3]) / 2)
 
     return finish(image, LONG, SHORT)
+
+
+def draw_horizontal_lip(bays_at_top):
+    """The overhang alone, on a transparent canvas the same size as the station."""
+    image, draw = new_canvas(LONG, SHORT)
+    _, _, lip_box, _, shadow, _ = horizontal_geometry(bays_at_top)
+
+    lip_band(draw, lip_box, shadow)
+    for i in range(CELLS):
+        bay_lamp(draw, CELL * (i + 0.5), (lip_box[1] + lip_box[3]) / 2)
+
+    return finish(image, LONG, SHORT)
+
+
+def east_geometry():
+    lip_px = CELL * LIP_DEPTH
+    return (CELL, SHORT), (CELL, MARGIN, CELL + lip_px, LONG - MARGIN), "right", "right", CELL * 0.5
 
 
 def draw_east():
     image, draw = new_canvas(SHORT, LONG)
     chassis(draw, SHORT, LONG)
 
-    bay_x = SHORT - MARGIN - 3 - BAY_DEPTH / 2
+    lip_box, open_dir, shadow, body_x = east_geometry()[1:]
 
-    for i in range(CELLS):
-        bay(draw, bay_x, CELL * (i + 0.5), horizontal=False, chevron_towards="left")
-
-    body_x = (MARGIN + (bay_x - BAY_DEPTH / 2)) / 2
-
-    subcore_window(draw, body_x, LONG / 2, 58, 150)
+    subcore_window(draw, body_x, LONG / 2, 62, 150)
     vent_block(draw, body_x, CELL * 0.5, horizontal=False)
     vent_block(draw, body_x, CELL * 2.5, horizontal=False)
 
-    lamp_x = bay_x - BAY_DEPTH / 2 - 14
     for i in range(CELLS):
-        bay_lamp(draw, lamp_x, CELL * (i + 0.5))
+        bay_recess(draw, CELL * 1.5, CELL * (i + 0.5), open_dir)
+
+    lip_band(draw, lip_box, shadow)
+    for i in range(CELLS):
+        bay_lamp(draw, (lip_box[0] + lip_box[2]) / 2, CELL * (i + 0.5))
+
+    return finish(image, SHORT, LONG)
+
+
+def draw_east_lip():
+    image, draw = new_canvas(SHORT, LONG)
+    lip_box, _, shadow, _ = east_geometry()[1:]
+
+    lip_band(draw, lip_box, shadow)
+    for i in range(CELLS):
+        bay_lamp(draw, (lip_box[0] + lip_box[2]) / 2, CELL * (i + 0.5))
 
     return finish(image, SHORT, LONG)
 
@@ -208,15 +321,19 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
 
     views = {
-        "north": lambda: draw_horizontal(bays_at_top=True),
-        "south": lambda: draw_horizontal(bays_at_top=False),
-        "east": draw_east,
+        "north": (lambda: draw_horizontal(bays_at_top=True), lambda: draw_horizontal_lip(True)),
+        "south": (lambda: draw_horizontal(bays_at_top=False), lambda: draw_horizontal_lip(False)),
+        "east": (draw_east, draw_east_lip),
     }
 
-    for name, view in views.items():
+    for name, (body, lip) in views.items():
         path = os.path.join(out_dir, f"RiimbaStation_{name}.png")
-        view().save(path)
+        body().save(path)
         print(f"wrote {path}")
+
+        lip_path = os.path.join(out_dir, f"RiimbaStationLip_{name}.png")
+        lip().save(lip_path)
+        print(f"wrote {lip_path}")
 
 
 if __name__ == "__main__":

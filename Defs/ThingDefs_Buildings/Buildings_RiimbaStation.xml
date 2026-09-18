@@ -6,7 +6,7 @@
     <label>riimba control station</label>
     <description>The brain and the garage for a team of Riimba cleaning drones. A basic subcore inside plans the routes; the drones themselves only execute them, and they stop dead outside the station's broadcast radius.
 
-Select it to see that radius and its three docking bays, which sit along the edge it faces. Up to three units sign on to one station. A docked unit charges and hands over whatever it has collected, and the station puts that waste down on the spot behind it - trash from ordinary dirt, wastepacks from anything that came out of a body.
+Select it to see that radius and its three docking bays, which are the three open cells along the edge it faces. A unit drives up to its bay, turns, and reverses in under the overhang. Up to three sign on to one station. A docked unit charges and hands over whatever it has collected, and the station puts that waste down on the spot behind it - trash from ordinary dirt, wastepacks from anything that came out of a body.
 
 Needs power to command and to charge. Cut the power and every unit signed on to it parks and waits.</description>
     <thingClass>RiimbaMod.Building_RiimbaStation</thingClass>
@@ -17,9 +17,10 @@ Needs power to command and to charge. Cut the power and every unit signed on to 
     <graphicData>
       <texPath>Things/Building/Riimba/RiimbaStation</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
-      <!-- Authored at the footprint's exact 3:1 aspect, so the art lands inside its own cells
-           with no overhang, same as the mending benches. -->
-      <drawSize>(3,1)</drawSize>
+      <!-- Authored at the footprint's exact 3:2 aspect, so the art lands inside its own cells.
+           The overhang that masks a docking unit is a SEPARATE texture drawn above pawns by
+           Building_RiimbaStation - see RiimbaStationLip. -->
+      <drawSize>(3,2)</drawSize>
       <damageData>
         <cornerTL>Damage/Corner</cornerTL>
         <cornerTR>Damage/Corner</cornerTR>
@@ -27,10 +28,10 @@ Needs power to command and to charge. Cut the power and every unit signed on to 
         <cornerBR>Damage/Corner</cornerBR>
       </damageData>
     </graphicData>
-    <size>(3,1)</size>
+    <size>(3,2)</size>
     <costList>
-      <Steel>120</Steel>
-      <ComponentIndustrial>4</ComponentIndustrial>
+      <Steel>170</Steel>
+      <ComponentIndustrial>5</ComponentIndustrial>
       <!-- NOT THE WHOLE COST. RiimbaMod.RiimbaDefPatches appends a basic subcore to this list at
            StaticConstructorOnStartup, so what the game charges is this plus one subcore. It is
            done in C# rather than named here so the def resolves against whatever this install
@@ -55,8 +56,8 @@ Needs power to command and to charge. Cut the power and every unit signed on to 
     </placeWorkers>
     <statBases>
       <MaxHitPoints>200</MaxHitPoints>
-      <WorkToBuild>4000</WorkToBuild>
-      <Mass>40</Mass>
+      <WorkToBuild>5200</WorkToBuild>
+      <Mass>55</Mass>
       <Flammability>0.4</Flammability>
       <Beauty>-4</Beauty>
     </statBases>

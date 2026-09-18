@@ -32,15 +32,50 @@ namespace RiimbaMod
             return cells;
         }
 
-        // One bay per cell along the edge the station faces. A 3x1 station therefore has exactly
-        // three, which is the same number as maxUnits - that is the point of the footprint.
+        // One bay per cell along the front row - INSIDE the footprint, not outside it.
+        //
+        // The station is three wide and two deep for exactly this reason. The back row is the
+        // machine; the front row is three open bays, and a unit drives onto one of the
+        // building's own cells to dock. That is what lets the station's overhang mask the
+        // unit's back end as it reverses in: the lip is then drawn over cells that belong to
+        // the building, rather than over the open floor in front of it.
         //
         // Deliberately one bay per unit rather than a single shared docking cell: three units
         // queueing for one tile is three units standing in each other's way, and a unit that
         // cannot reach the dock cannot charge.
         public static List<IntVec3> BayCells(CellRect rect, Rot4 rot)
         {
-            return EdgeCells(rect, rot, front: true);
+            return FrontRowCells(rect, rot);
+        }
+
+        // The row of the footprint nearest the side the building faces.
+        public static List<IntVec3> FrontRowCells(CellRect rect, Rot4 rot)
+        {
+            IntVec3 dir = rot.FacingCell;
+            List<IntVec3> cells = new List<IntVec3>();
+
+            if (dir.x != 0)
+            {
+                int x = dir.x > 0 ? rect.maxX : rect.minX;
+                for (int z = rect.minZ; z <= rect.maxZ; z++)
+                    cells.Add(new IntVec3(x, 0, z));
+            }
+            else
+            {
+                int z = dir.z > 0 ? rect.maxZ : rect.minZ;
+                for (int x = rect.minX; x <= rect.maxX; x++)
+                    cells.Add(new IntVec3(x, 0, z));
+            }
+
+            return cells;
+        }
+
+        // Where a unit lines up before reversing in: the cell directly in front of its bay,
+        // just outside the building. It drives here nose-first, turns on the spot, then backs
+        // onto the bay - see JobDriver_RiimbaDock.
+        public static IntVec3 ApproachCellFor(IntVec3 bay, Rot4 rot)
+        {
+            return bay + rot.FacingCell;
         }
 
         // Waste goes out the back, away from the bays, so a unit arriving to dock never has to

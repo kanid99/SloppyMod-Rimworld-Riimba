@@ -28,7 +28,7 @@ from riimba_draw import CONTACT  # noqa: E402
 TEXTURE_DIR = os.path.join("Textures", "Things", "Building", "Riimba")
 
 CELL_PX = 192
-SIZE = (3, 1)          # the def's <size>
+SIZE = (3, 2)          # the def's <size>: three wide, two deep
 
 # Rot4: 0 north, 1 east, 2 south, 3 west. FacingCell as the game defines it.
 FACING = {
@@ -48,25 +48,28 @@ TEXTURE_FOR = {
 }
 
 
+def footprint(rot):
+    """The occupied rect, with the size's axes swapped for the vertical rotations - which
+    is what GenAdj.OccupiedRect does."""
+    if rot in ("north", "south"):
+        return 0, SIZE[0] - 1, 0, SIZE[1] - 1
+    return 0, SIZE[1] - 1, 0, SIZE[0] - 1
+
+
 def bay_cells(rot):
     """RiimbaSpots.BayCells, reimplemented.
 
-    Footprint is taken as the rect (0,0)-(2,0) for a north or south facing 3x1, and
-    (0,0)-(0,2) when rotated east or west, which is what GenAdj.OccupiedRect does when
-    it swaps the size's axes for the vertical rotations.
+    The bays are the front row INSIDE the footprint, not the row outside it. That is what
+    lets a docking unit drive onto the building's own cells and slide under its overhang.
     """
-    if rot in ("north", "south"):
-        min_x, max_x, min_z, max_z = 0, SIZE[0] - 1, 0, SIZE[1] - 1
-    else:
-        min_x, max_x, min_z, max_z = 0, SIZE[1] - 1, 0, SIZE[0] - 1
-
+    min_x, max_x, min_z, max_z = footprint(rot)
     dx, dz = FACING[rot]
 
     if dx != 0:
-        x = max_x + 1 if dx > 0 else min_x - 1
+        x = max_x if dx > 0 else min_x
         return [(x, z) for z in range(min_z, max_z + 1)]
 
-    z = max_z + 1 if dz > 0 else min_z - 1
+    z = max_z if dz > 0 else min_z
     return [(x, z) for x in range(min_x, max_x + 1)]
 
 
@@ -90,41 +93,33 @@ def looks_like_bay(image, px, py, radius=26):
     return False
 
 
-def bay_sample_points(image, rot):
-    """Where in the texture the three bays should be, given the rotation.
+def row_centres(image, rot, front):
+    """Texture-space centres of the three cells in the front or back row.
 
-    The bays are cut INTO the chassis along the facing edge, so they are sampled just
-    inside the texture rather than outside it - the texture covers the building's own
-    cells, not the cells the units stand on.
+    Screen y runs DOWN and map z runs UP, so a north-facing station's front row is the TOP
+    of its texture. Getting that inversion wrong is precisely the bug this script exists to
+    catch - the mending mod shipped it once.
     """
     width, height = image.size
-    inset = 30
-
     dx, dz = FACING[rot]
 
     if dx != 0:
-        # Facing east or west: bays run down one vertical edge.
-        x = width - inset if dx > 0 else inset
-        return [(x, int(height * (i + 0.5) / 3)) for i in range(3)]
+        # East or west facing: two columns, three rows of bays.
+        near = dx > 0
+        x = width * 0.75 if (near if front else not near) else width * 0.25
+        return [(int(x), int(height * (i + 0.5) / 3)) for i in range(3)]
 
-    # Facing north or south. Screen y runs DOWN and map z runs UP, so north (+z) is the
-    # top of the texture. Getting this inversion wrong is precisely the bug this script
-    # was written to catch.
-    y = inset if dz > 0 else height - inset
-    return [(int(width * (i + 0.5) / 3), y) for i in range(3)]
+    near = dz > 0
+    y = height * 0.25 if (near if front else not near) else height * 0.75
+    return [(int(width * (i + 0.5) / 3), int(y)) for i in range(3)]
+
+
+def bay_sample_points(image, rot):
+    return row_centres(image, rot, front=True)
 
 
 def opposite_points(image, rot):
-    width, height = image.size
-    inset = 30
-    dx, dz = FACING[rot]
-
-    if dx != 0:
-        x = inset if dx > 0 else width - inset
-        return [(x, int(height * (i + 0.5) / 3)) for i in range(3)]
-
-    y = height - inset if dz > 0 else inset
-    return [(int(width * (i + 0.5) / 3), y) for i in range(3)]
+    return row_centres(image, rot, front=False)
 
 
 def main():
@@ -155,8 +150,24 @@ def main():
         for i, (px, py) in enumerate(opposite_points(image, rot)):
             if looks_like_bay(image, px, py):
                 failures.append(
-                    f"{rot}: found a bay on the BACK edge at ({px},{py}) - "
-                    f"the facing edge is {FACING[rot]}, so this rotation is reversed")
+                    f"{rot}: found a bay in the BACK row at ({px},{py}) - "
+                    f"the facing side is {FACING[rot]}, so this rotation is reversed")
+
+        # The overhang is a separate texture the building draws above pawn altitude. It has
+        # to exist for every rotation, or a unit reverses in and simply sits on top of the
+        # machine with nothing masking it.
+        lip_path = os.path.join(TEXTURE_DIR, f"RiimbaStationLip_{texture_name}.png")
+        if not os.path.exists(lip_path):
+            failures.append(f"{rot}: missing overhang texture {lip_path}")
+        else:
+            lip = Image.open(lip_path).convert("RGBA")
+            if mirrored:
+                lip = lip.transpose(Image.FLIP_LEFT_RIGHT)
+            if lip.size != image.size:
+                failures.append(f"{rot}: overhang is {lip.size}, station is {image.size} - "
+                                f"they are drawn at the same rect, so they must match")
+            elif lip.getbbox() is None:
+                failures.append(f"{rot}: overhang texture is entirely transparent")
 
         print(f"{rot:>6}: texture {texture_name}"
               f"{' (mirrored)' if mirrored else ''}, bay cells {cells}")

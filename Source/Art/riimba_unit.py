@@ -235,75 +235,79 @@ def _place_led(draw, dx, dy):
     ellipse(draw, (x - led, y - led, x + led, y + led), fill=TEAL)
 
 
-def view_south():
+# ---------------------------------------------------------------------------------
+# Four layers, not three views.
+#
+# The unit turns to any heading now, so it cannot be three fixed sprites. It is split by
+# what each part does when the machine turns:
+#
+#   shell   the disc and its lid. Rotationally symmetric, so it NEVER rotates - which is
+#           what keeps its highlight lit from the top of the screen at every heading.
+#           Drawn by the pawn renderer as the body graphic.
+#   under   the drive wheels. They turn with the machine, and they live beneath the shell.
+#   face    bumper, sensor, pilot lamp, vents, handle. Everything that says which way the
+#           machine is pointing. Turns with the heading, drawn above the shell.
+#   brush   the spinner. Its hub is carried round by the heading AND it turns on its own
+#           axis while cleaning.
+#
+# The three rotating layers are authored pointing NORTH - front at the TOP of the texture -
+# because that is the convention Graphic.Draw's extraRotation expects, the same one vanilla
+# projectiles use. IntVec3.AngleFlat gives 0 for north, so heading feeds straight in.
+# ---------------------------------------------------------------------------------
+
+
+def view_shell():
+    """The disc alone. Nothing here may hint at a direction."""
     image, draw = new_canvas(SIZE, SIZE)
-    draw_wheels(draw, horizontal=True)
     draw_body(draw)
-    draw_bumper(draw, "down")
-    draw_sensor(draw, "down")
-    draw_status_led(draw)
     return finish(image, SIZE, SIZE)
 
 
-def view_north():
+def view_under():
+    """Drive wheels, which turn with the machine and sit beneath the shell."""
     image, draw = new_canvas(SIZE, SIZE)
     draw_wheels(draw, horizontal=True)
-    draw_body(draw)
+    return finish(image, SIZE, SIZE)
+
+
+def view_face():
+    """Everything that shows which way the machine points, front at the top."""
+    image, draw = new_canvas(SIZE, SIZE)
     draw_bumper(draw, "up")
-    draw_vents(draw, "down")
+    draw_vents(draw, "up")
     draw_handle(draw)
+    draw_sensor(draw, "up")
+    _place_led(draw, 0, -1)
     return finish(image, SIZE, SIZE)
 
 
-def view_east():
-    image, draw = new_canvas(SIZE, SIZE)
-    draw_wheels(draw, horizontal=False)
-    draw_body(draw)
-    draw_bumper(draw, "right")
-    draw_sensor(draw, "right")
-    draw_vents(draw, "right")
-    _place_led(draw, -1, 0)
-    return finish(image, SIZE, SIZE)
+def brush_offset_in_cells(body_draw_size=1.1):
+    """The hub's offset from the centre as (side, forward) in cells.
 
-
-def brush_offsets_in_cells(body_draw_size=1.1):
-    """The hub offsets the C# needs, converted from sprite pixels into world cells.
-
-    Texture y runs DOWN and RimWorld's z runs UP, so the z component is negated. Getting
-    that inversion wrong would put the brush on the far side of the machine, which is
-    exactly the class of mistake verify_bays.py exists to catch on the station.
-
-    West is not drawn: Graphic_Multi mirrors the east sprite for it, so the brush mirrors
-    with it and its x offset flips sign.
+    Not per-rotation any more: the C# rotates this pair by the unit's heading, so one pair
+    covers every angle. Forward is towards the bumper, side is to the machine's right.
     """
-    offsets = {}
-    for facing, rot in (("down", "south"), ("up", "north"), ("right", "east")):
-        dx, dy = brush_hub(facing)
-        offsets[rot] = (dx / SIZE * body_draw_size, -dy / SIZE * body_draw_size)
-
-    east_x, east_z = offsets["east"]
-    offsets["west"] = (-east_x, east_z)
-    return offsets
+    side = -R * BRUSH_ALONG / SIZE * body_draw_size
+    forward = R * BRUSH_OUT / SIZE * body_draw_size
+    return side, forward
 
 
 def main():
     out_dir = os.path.join("Textures", "Things", "Pawn", "Riimba")
     os.makedirs(out_dir, exist_ok=True)
 
-    for name, view in (("north", view_north), ("east", view_east), ("south", view_south)):
-        path = os.path.join(out_dir, f"Riimba_{name}.png")
+    for name, view in (("RiimbaShell", view_shell), ("RiimbaUnder", view_under),
+                       ("RiimbaFace", view_face), ("RiimbaBrush", view_brush)):
+        path = os.path.join(out_dir, f"{name}.png")
         view().save(path)
         print(f"wrote {path}")
 
-    brush_path = os.path.join(out_dir, "RiimbaBrush.png")
-    view_brush().save(brush_path)
-    print(f"wrote {brush_path}")
-
+    side, forward = brush_offset_in_cells()
     print()
-    print("brush draw size, in cells:", round(BRUSH_SIZE / SIZE * 1.1, 4))
-    print("brush offsets, in cells (x, z) - these must match the comp's XML:")
-    for rot, (x, z) in brush_offsets_in_cells().items():
-        print(f"  {rot:>5}: ({x:+.4f}, {z:+.4f})")
+    print("These must match CompProperties_RiimbaUnit in Defs/ThingDefs_Races/Riimba.xml:")
+    print(f"  brushDrawSize {BRUSH_SIZE / SIZE * 1.1:.4f}")
+    print(f"  brushAlong    {abs(side):.4f}   (hub offset to the side)")
+    print(f"  brushOut      {forward:.4f}   (hub offset forward)")
 
 
 if __name__ == "__main__":

@@ -58,6 +58,21 @@ for west, and that is correct for both: the drone is symmetric about that axis, 
 mirroring moves the station's bays from the right edge to the left, which is where
 west's `FacingCell` of `(-1, 0, 0)` puts them.
 
+## The station is 3x2 and its bays are inside it
+
+The three bays are the station's own front row, not the row of floor outside it. A unit drives
+onto one of the building's cells to dock.
+
+That is what makes the overhang possible. `RiimbaStationLip_*.png` is the band where the
+machine protrudes over its bays, drawn a second time by `Building_RiimbaStation` above pawn
+altitude, so a unit reversing in passes under it. Because the bays are inside the footprint,
+that mask only ever covers cells belonging to the building - not the open walkway in front of
+it. It still clips any colonist who stands on a bay, which is the accepted cost; the band is
+only as deep as it needs to be to hide the back of a 1.1-cell disc parked on the bay's centre.
+
+The lip texture is the same size as the station's own, so both draw at the same rect and
+cannot drift apart. `verify_bays.py` checks it exists, matches that size, and is not blank.
+
 ## The station's bays are a contract with the C#
 
 `RiimbaSpots.BayCells` returns the row of cells just outside `rot.FacingCell`, and
@@ -66,10 +81,10 @@ the art has to put a bay where the code puts one, in every rotation:
 
 | rotation | facing | bays drawn on | canvas |
 | --- | --- | --- | --- |
-| north | `(0, 1)` | top edge | 576x192 |
-| east | `(1, 0)` | right edge | 192x576 |
-| south | `(0, -1)` | bottom edge | 576x192 |
-| west | `(-1, 0)` | left edge, by mirroring east | - |
+| north | `(0, 1)` | top row | 576x384 |
+| east | `(1, 0)` | right column | 384x576 |
+| south | `(0, -1)` | bottom row | 576x384 |
+| west | `(-1, 0)` | left column, by mirroring east | - |
 
 Note the inversion on the horizontal pair: map z runs UP and screen y runs DOWN, so
 north is the TOP of the texture. That is exactly the sign error that shipped in the
@@ -89,6 +104,32 @@ python3 Source/Art/verify_bays.py
 The contacts are used as the marker rather than the bay recess because that gold is the
 only colour that appears nowhere else on the building; the recess tone is close enough
 to the chassis shadow to give false positives.
+
+## The drone is four layers, not three views
+
+It turns to any heading now, so it cannot be three fixed sprites. It is split by what each
+part does when the machine turns:
+
+| layer | turns? | drawn | why |
+| --- | --- | --- | --- |
+| `RiimbaShell` | never | by the pawn renderer | the disc is symmetric, so holding it still keeps its highlight lit from the top of the screen at every heading |
+| `RiimbaUnder` | with the heading | below the shell | wheels turn with the machine |
+| `RiimbaFace` | with the heading | above the shell | bumper, sensor, lamp, vents - everything that says which way it points |
+| `RiimbaBrush` | with the heading, and on its own axis | below the shell | the hub is carried round; the spinner also turns while cleaning |
+
+Rotating the whole sprite instead would rotate its lighting with it, which is the thing this
+file argues against everywhere else. Splitting it means only the parts that genuinely have an
+orientation ever turn.
+
+The rotating layers are authored pointing NORTH - front at the TOP of the texture - because
+that is what `Graphic.Draw`'s `extraRotation` expects, the same convention vanilla projectiles
+use, and `IntVec3.AngleFlat` gives 0 for north. So the heading feeds straight in with no sign
+correction, which is exactly the kind of conversion that goes wrong unnoticed.
+
+`verify_brush.py` checks the shell really is symmetric by rotating it 90, 180 and 270 degrees
+and comparing: it currently differs from itself by 0.4-0.5%, against a 3% limit. Put a vent or
+an off-centre highlight on the shell and that check fails, because the machine would then read
+as having a fixed front that its own bumper slides around.
 
 ## The side brush is a separate sprite
 
@@ -142,8 +183,10 @@ after the downsample.
 
 | texture | size | why |
 | --- | --- | --- |
-| `Riimba_*.png` | 256x256 | pawn sprite, drawn at `drawSize 1.1` |
+| `RiimbaShell.png` | 256x256 | the body graphic, drawn at `drawSize 1.1`, never rotated |
+| `RiimbaUnder.png`, `RiimbaFace.png` | 256x256 | the rotating layers, authored pointing north |
 | `RiimbaBrush.png` | 64x64 | the spinner alone, hub centred, cropped at the body's scale |
+| `RiimbaStationLip_*.png` | as the station | the overhang, drawn above pawns as a mask |
 | `RiimbaStation_north/south.png` | 576x192 | 3x1 footprint at 192px per cell, exact |
 | `RiimbaStation_east.png` | 192x576 | the same, axes swapped |
 | `About/Preview.png` | 640x360 | what the workshop shows |
@@ -164,8 +207,8 @@ while a dark disc with one teal eye still reads.
 | script | builds |
 | --- | --- |
 | `riimba_draw.py` | shared primitives, the palette, and the supersampling |
-| `riimba_unit.py` | the drone, north/east/south, and the separate brush sprite |
+| `riimba_unit.py` | the drone's four layers |
 | `riimba_station.py` | the station, north/east/south |
 | `verify_bays.py` | checks the station textures against `RiimbaSpots.BayCells` |
-| `verify_brush.py` | checks the brush offsets against `CompRiimbaUnit` and the def |
+| `verify_brush.py` | checks the layer offsets, shell symmetry and brush tuck |
 | `make_about_art.py` | `About/Preview.png` and `About/ModIcon.png` |

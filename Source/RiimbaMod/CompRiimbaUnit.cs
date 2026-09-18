@@ -27,7 +27,19 @@ namespace RiimbaMod
         // facing: "out" is towards the front, "along" is sideways. Both come straight out of
         // Source/Art/riimba_unit.py, which prints them when it regenerates the textures, and
         // verify_brush.py fails the build if the two ever disagree.
+        // Layers drawn around the shell. The shell itself is the pawn's body graphic and is
+        // never rotated - see Source/Art/README.md for why the machine is split this way.
+        public string underTexPath = "Things/Pawn/Riimba/RiimbaUnder";
+        public string faceTexPath = "Things/Pawn/Riimba/RiimbaFace";
         public string brushTexPath = "Things/Pawn/Riimba/RiimbaBrush";
+
+        // The whole sprite is 1.1 cells, so the rotating layers are drawn at that size too.
+        public float bodyDrawSize = 1.1f;
+
+        // How fast the machine swings round to a new heading. 6 deg/tick is a full reversal in
+        // half a second: quick enough not to look sluggish, slow enough to read as a turn
+        // rather than a snap.
+        public float turnDegreesPerTick = 6f;
         public float brushAlong = 0.198f;
         public float brushOut = 0.3841f;
         public float brushDrawSize = 0.275f;
@@ -71,7 +83,18 @@ namespace RiimbaMod
         // Not saved. It is a drawing detail with no bearing on anything, and a brush that
         // resumes from a different angle after a reload is not something anyone can notice.
         private float brushAngle;
-        private Material brushMaterial;
+
+        // Where the machine is pointing, in compass degrees, eased towards where it is going.
+        // Saved: a unit that reloaded facing a different way than it was would visibly snap.
+        private float drawnHeading;
+
+        // Set by JobDriver_RiimbaDock while the unit is lining up and backing into its bay, when
+        // the heading must point AWAY from the station rather than along the direction of travel.
+        public bool reverseHeading;
+
+        private Graphic underGraphic;
+        private Graphic faceGraphic;
+        private Graphic brushGraphic;
 
         public CompProperties_RiimbaUnit Props => (CompProperties_RiimbaUnit)props;
 
@@ -114,6 +137,7 @@ namespace RiimbaMod
             Scribe_Values.Look(ref trashLoad, "trashLoad", 0f);
             Scribe_Values.Look(ref bioLoad, "bioLoad", 0f);
             Scribe_Values.Look(ref overseerRelationChecked, "overseerRelationChecked", false);
+            Scribe_Values.Look(ref drawnHeading, "drawnHeading", 0f);
         }
 
         // CompTickInterval rather than CompTick: 1.6 calls it with the number of ticks that have
@@ -145,6 +169,11 @@ namespace RiimbaMod
             // map behaves.
             if (IsBrushSpinning)
                 brushAngle = (brushAngle + Props.brushDegreesPerTick * delta) % 360f;
+
+            // MoveTowardsAngle rather than a plain lerp: it takes the short way round, so a
+            // reversal turns through 180 degrees instead of winding the long way past 359.
+            drawnHeading = Mathf.MoveTowardsAngle(
+                drawnHeading, TargetHeading(), Props.turnDegreesPerTick * delta);
 
             if (IsDockedAndCharging)
                 GainCharge(delta, Props.chargeGainPerDayDocked);
@@ -306,74 +335,103 @@ namespace RiimbaMod
             && !Unit.Downed
             && Unit.CurJobDef == RiimbaDefOf.Riimba_Clean;
 
-        private Material BrushMaterial
+        // Which way the machine wants to be pointing right now.
+        //
+        // Deliberately a TARGET, not the heading itself: CompTickInterval eases towards it, so a
+        // change of direction reads as the machine swinging round rather than snapping. The
+        // pawn's own Rotation is still the vanilla four-way one and is left alone - nothing here
+        // touches how it actually moves, only how it is drawn.
+        private float TargetHeading()
         {
-            get
-            {
-                if (brushMaterial == null && !Props.brushTexPath.NullOrEmpty())
-                    brushMaterial = MaterialPool.MatFrom(Props.brushTexPath, ShaderDatabase.Cutout);
+            // Backing in: point away from the station, so the machine reverses under the
+            // overhang rather than driving in nose-first.
+            if (reverseHeading && station != null && station.Spawned)
+                return station.Rotation.FacingCell.ToVector3().AngleFlat();
 
-                return brushMaterial;
-            }
+            // lastMoveDirection is set by the pather to (nextCell - lastCell).AngleFlat every
+            // time a step begins, which is exactly the heading wanted while under way.
+            Pawn unit = Unit;
+            if (unit.pather != null && unit.pather.Moving)
+                return unit.pather.lastMoveDirection;
+
+            // Standing still: hold whatever we are pointing at rather than drifting to north.
+            return drawnHeading;
         }
 
-        // The hub's offset from the pawn's centre for a given facing, built the same way
-        // Source/Art/riimba_unit.py builds it: "out" towards the front, "along" to one side.
-        //
-        // West is the east offset mirrored in x, because Graphic_Multi draws west by flipping
-        // the east body sprite - so the brush has to flip with it or it would swap sides.
-        private Vector3 BrushOffset(Rot4 rotation)
+        // Within a few degrees of where it wants to point. Deliberately not an exact match:
+        // the heading is eased towards its target and would take an unbounded number of ticks
+        // to land exactly on it.
+        public bool HeadingSettled =>
+            Mathf.Abs(Mathf.DeltaAngle(drawnHeading, TargetHeading())) <= 4f;
+
+        private static Graphic LayerGraphic(ref Graphic cache, string texPath, float size)
         {
-            float along = Props.brushAlong;
-            float o = Props.brushOut;
+            if (cache == null && !texPath.NullOrEmpty())
+            {
+                // Asked for at the size it will be drawn at. GraphicDatabase keys its cache on
+                // drawSize among other things, so setting the size afterwards would resize the
+                // shared instance for everything else using the same texture.
+                cache = GraphicDatabase.Get<Graphic_Single>(
+                    texPath, ShaderDatabase.Cutout, new Vector2(size, size), Color.white);
+            }
 
-            if (rotation == Rot4.South)
-                return new Vector3(-along, 0f, -o);
-            if (rotation == Rot4.North)
-                return new Vector3(along, 0f, o);
-            if (rotation == Rot4.East)
-                return new Vector3(o, 0f, -along);
+            return cache;
+        }
 
-            return new Vector3(-o, 0f, -along);
+        // A point offset from the machine's centre in ITS frame - forward towards the bumper,
+        // side to its right - converted into map coordinates for the current heading.
+        //
+        // Written out rather than using a vector rotation helper so the convention is on the
+        // page: heading is compass degrees, 0 pointing north (+z) and 90 east (+x), which is
+        // what IntVec3.AngleFlat produces and what Graphic.Draw's extraRotation consumes.
+        private static Vector3 LocalToMap(float side, float forward, float heading)
+        {
+            float radians = heading * Mathf.Deg2Rad;
+            float sin = Mathf.Sin(radians);
+            float cos = Mathf.Cos(radians);
+
+            return new Vector3(side * cos + forward * sin, 0f, forward * cos - side * sin);
         }
 
         // Pawn.DrawAt calls Comps_PostDraw, so a comp can draw on a pawn without replacing its
-        // render tree. That matters here: the alternative was giving Riimba its own
-        // PawnRenderTreeDef, which would mean restating the body, wound and carried-thing nodes
-        // and re-checking them against every future version, all to hang one spinning quad off
-        // the machine.
+        // render tree. Three layers are drawn here; the fourth, the shell, is the pawn's own body
+        // graphic and is left to the renderer precisely because it must NOT turn.
+        //
+        // Altitudes, relative to the pawn: wheels and brush one increment down so the shell
+        // covers them, the face one increment up so it sits on the lid. A full increment clears
+        // the pawn's render tree in both directions - its node layers span layer * 0.0003658537
+        // clamped to [-10, 100], so nothing of the body reaches beyond one increment either way.
         public override void PostDraw()
         {
             base.PostDraw();
 
-            Material material = BrushMaterial;
-            if (material == null || !parent.Spawned)
+            if (!parent.Spawned)
                 return;
 
-            // A downed pawn is drawn lying down - the renderer turns the body ninety degrees -
-            // so the offsets below, which assume an upright disc seen from above, would put the
-            // brush somewhere beside the wreck. A downed unit simply shows no brush.
+            // A downed pawn is drawn lying down, so offsets that assume an upright disc seen
+            // from above would scatter these layers around the wreck.
             if (Unit.Downed || Unit.Dead)
                 return;
 
-            Vector3 position = parent.DrawPos + BrushOffset(parent.Rotation);
+            Vector3 centre = parent.DrawPos;
+            float heading = drawnHeading;
 
-            // BELOW the body, not above it. The brush is mounted on the underside of the
-            // disc: only the part that reaches past the rim should be visible, and the shell
-            // should hide the rest. Drawn on top it reads as a spinner sitting on the lid.
-            //
-            // A full altitude increment down clears the pawn's whole render tree. Node layers
-            // are applied as layer * 0.0003658537 clamped to [-10, 100] (PawnRenderUtility),
-            // so the deepest any node can sit is -0.0037 and the highest is one increment; a
-            // full increment down is under all of them without straying into the layer below.
-            position.y -= Altitudes.AltInc;
+            Graphic under = LayerGraphic(ref underGraphic, Props.underTexPath, Props.bodyDrawSize);
+            if (under != null)
+                under.Draw(centre.WithY(centre.y - Altitudes.AltInc), Rot4.North, parent, heading);
 
-            Matrix4x4 matrix = Matrix4x4.TRS(
-                position,
-                Quaternion.AngleAxis(brushAngle, Vector3.up),
-                new Vector3(Props.brushDrawSize, 1f, Props.brushDrawSize));
+            Graphic brush = LayerGraphic(ref brushGraphic, Props.brushTexPath, Props.brushDrawSize);
+            if (brush != null)
+            {
+                // The hub is carried round by the heading; the spinner turns on its own axis on
+                // top of that. The brush is on the machine's left, hence the negative side.
+                Vector3 hub = centre + LocalToMap(-Props.brushAlong, Props.brushOut, heading);
+                brush.Draw(hub.WithY(centre.y - Altitudes.AltInc), Rot4.North, parent, brushAngle);
+            }
 
-            Graphics.DrawMesh(MeshPool.plane10, matrix, material, 0);
+            Graphic face = LayerGraphic(ref faceGraphic, Props.faceTexPath, Props.bodyDrawSize);
+            if (face != null)
+                face.Draw(centre.WithY(centre.y + Altitudes.AltInc), Rot4.North, parent, heading);
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()

@@ -11,6 +11,9 @@ namespace RiimbaMod
     // job's report string names the building the player can see rather than a bare coordinate.
     public class JobDriver_RiimbaDock : JobDriver
     {
+        // How long the line-up toil may take before the unit gives up and backs in anyway.
+        private const int MaxLineUpTicks = 300;
+
         private Building_RiimbaStation Station => job.GetTarget(TargetIndex.A).Thing as Building_RiimbaStation;
 
         private CompRiimbaUnit Unit => pawn.GetComp<CompRiimbaUnit>();
@@ -26,6 +29,48 @@ namespace RiimbaMod
         {
             this.EndOnDespawnedOrNull(TargetIndex.A);
 
+            // Whatever happens to this job - finished, interrupted, the station destroyed - the
+            // unit must stop trying to point away from a station it is no longer docking with.
+            AddFinishAction(delegate
+            {
+                CompRiimbaUnit unit = Unit;
+                if (unit != null)
+                    unit.reverseHeading = false;
+            });
+
+            // Drive to the cell in front of the bay first, nose-first like any other travel.
+            yield return Toils_Goto.GotoCell(TargetIndex.C, PathEndMode.OnCell);
+
+            // Then stop and turn on the spot. This is the one place the machine genuinely
+            // pauses to rotate rather than swinging round while it moves: lining up is the
+            // point of the manoeuvre, and a couple of seconds parked outside its own bay costs
+            // nothing. Everywhere else the turn is cosmetic and the unit keeps going.
+            int lineUpTicks = 0;
+            Toil lineUp = ToilMaker.MakeToil("RiimbaLineUp");
+            lineUp.initAction = delegate
+            {
+                lineUpTicks = 0;
+                CompRiimbaUnit unit = Unit;
+                if (unit != null)
+                    unit.reverseHeading = true;
+            };
+            lineUp.tickIntervalAction = delegate (int delta)
+            {
+                lineUpTicks += delta;
+
+                // The timeout is the important half. A unit that somehow never settles - shoved
+                // off its cell, or a turn rate edited down to nothing - still docks; it just
+                // backs in crooked rather than standing outside its own bay forever.
+                CompRiimbaUnit unit = Unit;
+                if (unit == null || unit.HeadingSettled || lineUpTicks >= MaxLineUpTicks)
+                    ReadyForNextToil();
+            };
+            lineUp.defaultCompleteMode = ToilCompleteMode.Never;
+            lineUp.handlingFacing = false;
+            yield return lineUp.FailOnDespawnedOrNull(TargetIndex.A);
+
+            // Reverse onto the bay. reverseHeading stays set, so it keeps pointing outwards
+            // while its back end slides under the station's overhang.
             yield return Toils_Goto.GotoCell(TargetIndex.B, PathEndMode.OnCell);
 
             Toil dock = ToilMaker.MakeToil("RiimbaDock");

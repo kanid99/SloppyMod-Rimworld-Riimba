@@ -74,6 +74,39 @@ def tiled_floor(size):
     return image
 
 
+def drone(width, heading=0):
+    """The machine assembled from its layers, the way the game stacks them.
+
+    The three directional sprites are gone - the unit is drawn as a fixed shell with the
+    wheels, face and brush turned to its heading - so the store art has to assemble it the
+    same way rather than loading a finished sprite that no longer exists.
+    """
+    base = Image.open(os.path.join(UNIT_DIR, "RiimbaShell.png")).convert("RGBA")
+    canvas = Image.new("RGBA", base.size, (0, 0, 0, 0))
+
+    def turned(name):
+        layer = Image.open(os.path.join(UNIT_DIR, name)).convert("RGBA")
+        return layer.rotate(-heading, resample=Image.BICUBIC) if heading else layer
+
+    canvas.alpha_composite(turned("RiimbaUnder.png"))
+
+    brush = Image.open(os.path.join(UNIT_DIR, "RiimbaBrush.png")).convert("RGBA")
+    import math
+    scale = base.width / 1.1
+    side, forward = -0.198 * scale, 0.3841 * scale
+    rad = math.radians(heading)
+    bx = side * math.cos(rad) + forward * math.sin(rad)
+    by = -(forward * math.cos(rad) - side * math.sin(rad))
+    canvas.alpha_composite(brush, (int(base.width / 2 + bx - brush.width / 2),
+                                   int(base.height / 2 + by - brush.height / 2)))
+
+    canvas.alpha_composite(base)
+    canvas.alpha_composite(turned("RiimbaFace.png"))
+
+    factor = width / canvas.width
+    return canvas.resize((width, max(1, int(canvas.height * factor))), Image.LANCZOS)
+
+
 def scaled(path, height=None, width=None):
     image = Image.open(path).convert("RGBA")
 
@@ -91,16 +124,26 @@ def build_preview():
 
     # The station across the middle, at three tiles wide against the 40px tile above.
     station = scaled(os.path.join(STATION_DIR, "RiimbaStation_south.png"), width=300)
-    station_pos = (int(PREVIEW[0] / 2 - station.width / 2), 150)
+    station_pos = (int(PREVIEW[0] / 2 - station.width / 2), 132)
     canvas.alpha_composite(station, station_pos)
 
-    # One unit on a bay, two out working - which is the mod in one picture.
-    unit_south = scaled(os.path.join(UNIT_DIR, "Riimba_south.png"), width=86)
-    unit_east = scaled(os.path.join(UNIT_DIR, "Riimba_east.png"), width=86)
-    unit_north = scaled(os.path.join(UNIT_DIR, "Riimba_north.png"), width=86)
+    # One unit on a bay, two out working - which is the mod in one picture. Headings are
+    # compass degrees, the same convention the game uses.
+    unit_south = drone(86, heading=180)
+    unit_east = drone(86, heading=90)
+    unit_north = drone(86, heading=0)
 
     docked_x = station_pos[0] + station.width // 2 - unit_south.width // 2
-    canvas.alpha_composite(unit_south, (docked_x, station_pos[1] + station.height - 24))
+    # Centred on its bay - the middle of the station's front row - so a third of it genuinely
+    # sits under the overhang rather than merely touching it.
+    bay_centre_y = station_pos[1] + int(station.height * 0.75)
+    canvas.alpha_composite(unit_south, (docked_x, bay_centre_y - unit_south.height // 2))
+
+    # The overhang goes over the docked unit, exactly as Building_RiimbaStation draws it above
+    # pawn altitude in game. Without this the store art would show the one thing the bays are
+    # shaped for - a unit tucked under the machine - not happening.
+    lip = scaled(os.path.join(STATION_DIR, "RiimbaStationLip_south.png"), width=station.width)
+    canvas.alpha_composite(lip, station_pos)
 
     # Both working units sit clear of the title band. The north one used to be at y=60
     # and the band cut its top off.
@@ -137,7 +180,7 @@ def build_icon():
     with one teal eye still reads."""
     canvas = Image.new("RGBA", ICON, (0, 0, 0, 0))
 
-    unit = scaled(os.path.join(UNIT_DIR, "Riimba_south.png"), width=ICON[0])
+    unit = drone(ICON[0], heading=180)
     canvas.alpha_composite(unit, (0, (ICON[1] - unit.height) // 2))
 
     return canvas

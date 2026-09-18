@@ -82,9 +82,14 @@ namespace RiimbaMod
             if (!pawn.CanReach(bay, PathEndMode.OnCell, Danger.Deadly))
                 return null;
 
-            // A is the station and B the bay cell - see JobDriver_RiimbaDock for why that
-            // order and not the other one.
-            Job job = JobMaker.MakeJob(RiimbaDefOf.Riimba_Dock, station, bay);
+            // A the station, B the bay, C the cell in front of the bay. The unit drives to C
+            // nose-first, turns on the spot there, then reverses onto B under the overhang -
+            // see JobDriver_RiimbaDock.
+            IntVec3 approach = RiimbaSpots.ApproachCellFor(bay, station.Rotation);
+            if (!approach.InBounds(pawn.Map) || !pawn.CanReach(approach, PathEndMode.OnCell, Danger.Deadly))
+                return null;
+
+            Job job = JobMaker.MakeJob(RiimbaDefOf.Riimba_Dock, station, bay, approach);
 
             // A safety net, not the normal exit: the docking toil ends itself once the unit is
             // charged and empty. This is what gets a unit thinking again if its station loses

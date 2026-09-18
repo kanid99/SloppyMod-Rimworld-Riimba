@@ -19,6 +19,9 @@ namespace RiimbaMod
         // back as null and is cleaned out on the next tick rather than resurrecting a dead entry.
         private List<Pawn> units = new List<Pawn>();
 
+        private static readonly Vector2 LipDrawSize = new Vector2(3f, 2f);
+
+        private Graphic lipGraphic;
         private CompPowerTrader power;
         private CompRiimbaWasteBuffer wasteBuffer;
         private RiimbaStationExtension extension;
@@ -187,6 +190,48 @@ namespace RiimbaMod
             }
 
             Power.PowerOutput = -(Power.Props.PowerConsumption + charging * Extension.powerPerChargingUnit);
+        }
+
+        // The overhang, drawn a second time above pawn altitude so a unit reversing into a bay
+        // passes UNDER it. The station's own sprite already contains this band; this is the same
+        // pixels again, on top, acting as a mask.
+        //
+        // Built through GraphicDatabase with the same drawSize as the building so it uses the
+        // building's own mesh and rotation handling - reconstructing the quad by hand would mean
+        // reimplementing how Graphic_Multi swaps the axes for the east and west rotations, and
+        // getting that subtly wrong is a misalignment nobody would spot until a unit docked.
+        private Graphic LipGraphic
+        {
+            get
+            {
+                if (lipGraphic == null)
+                {
+                    lipGraphic = GraphicDatabase.Get<Graphic_Multi>(
+                        LipTexPath, ShaderDatabase.Cutout, LipDrawSize, Color.white);
+                }
+
+                return lipGraphic;
+            }
+        }
+
+        private string LipTexPath => def.graphicData.texPath + "Lip";
+
+        protected override void DrawAt(Vector3 drawLoc, bool flip = false)
+        {
+            base.DrawAt(drawLoc, flip);
+
+            Graphic lip = LipGraphic;
+            if (lip == null)
+                return;
+
+            // PawnState sits one layer above Pawn, so this covers a docked unit. It also covers
+            // any colonist standing on a bay, which is the accepted cost of the effect: the strip
+            // is only as deep as it needs to be, and it lies inside the machine's own footprint
+            // rather than across the walkway in front of it.
+            Vector3 loc = drawLoc;
+            loc.y = AltitudeLayer.PawnState.AltitudeFor();
+
+            lip.Draw(loc, Rotation, this);
         }
 
         public override void DrawExtraSelectionOverlays()
