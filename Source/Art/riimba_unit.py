@@ -11,7 +11,7 @@ north shows the back (vent grille and lifting handle), east shows the profile wi
 face to the right. West is not drawn at all - Graphic_Multi mirrors east for west, and
 a disc is symmetric about that axis.
 
-    python3 Riimba/Source/Art/riimba_unit.py      # from the repo root
+    python3 Source/Art/riimba_unit.py      # from the repo root
 """
 
 import os
@@ -258,7 +258,7 @@ def view_east():
 
 
 def main():
-    out_dir = os.path.join("Riimba", "Textures", "Things", "Pawn", "Riimba")
+    out_dir = os.path.join("Textures", "Things", "Pawn", "Riimba")
     os.makedirs(out_dir, exist_ok=True)
 
     for name, view in (("north", view_north), ("east", view_east), ("south", view_south)):

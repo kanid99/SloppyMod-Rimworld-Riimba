@@ -11,7 +11,7 @@ run for all four rotations against a 3x1 footprint, and the resulting cells are
 translated into pixel positions in whichever texture that rotation draws. A bay must be
 found at each of them, and the opposite edge must be clear.
 
-    python3 Riimba/Source/Art/verify_bays.py      # from the repo root
+    python3 Source/Art/verify_bays.py      # from the repo root
 
 Exits non-zero on any mismatch, so it can be wired into a build.
 """
@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from riimba_draw import CONTACT  # noqa: E402
 
-TEXTURE_DIR = os.path.join("Riimba", "Textures", "Things", "Building", "Riimba")
+TEXTURE_DIR = os.path.join("Textures", "Things", "Building", "Riimba")
 
 CELL_PX = 192
 SIZE = (3, 1)          # the def's <size>

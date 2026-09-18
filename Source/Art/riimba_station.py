@@ -18,7 +18,7 @@ Which means the rotations cannot be made by rotating one image:
 Light always comes from the top of the screen whatever the rotation, which is why the
 south view is drawn rather than flipped: flipping would light the bays from below.
 
-    python3 Riimba/Source/Art/riimba_station.py      # from the repo root
+    python3 Source/Art/riimba_station.py      # from the repo root
 
 Run verify_bays.py afterwards - it samples the real textures at the cells the C#
 computes and checks a bay is actually there.
@@ -204,7 +204,7 @@ def draw_east():
 
 
 def main():
-    out_dir = os.path.join("Riimba", "Textures", "Things", "Building", "Riimba")
+    out_dir = os.path.join("Textures", "Things", "Building", "Riimba")
     os.makedirs(out_dir, exist_ok=True)
 
     views = {

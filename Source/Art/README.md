@@ -6,10 +6,10 @@ clean checkout with nothing installed but Pillow.
 
 ```sh
 pip install pillow
-python3 Riimba/Source/Art/riimba_unit.py       # the drone, three views
-python3 Riimba/Source/Art/riimba_station.py    # the station, three rotations
-python3 Riimba/Source/Art/verify_bays.py       # checks the station art against the C#
-python3 Riimba/Source/Art/make_about_art.py    # store page art, from the above
+python3 Source/Art/riimba_unit.py       # the drone, three views
+python3 Source/Art/riimba_station.py    # the station, three rotations
+python3 Source/Art/verify_bays.py       # checks the station art against the C#
+python3 Source/Art/make_about_art.py    # store page art, from the above
 ```
 
 All four are run from the repo root.
@@ -82,7 +82,7 @@ is NOT on the opposite edge. It exits non-zero on a mismatch. Run it after any c
 to either side:
 
 ```sh
-python3 Riimba/Source/Art/verify_bays.py
+python3 Source/Art/verify_bays.py
 ```
 
 The contacts are used as the marker rather than the bay recess because that gold is the

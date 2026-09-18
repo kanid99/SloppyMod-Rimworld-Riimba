@@ -5,16 +5,18 @@ light mech, but driven by a control station rather than by a mechanitor: one sta
 commands up to three units inside a ten tile radius, charges them at its docking bays,
 and takes the waste they collect.
 
-## This is a separate mod from the mending mod
+## Installing
 
-The repository root is the SloppyMods Mending Solutions mod. Riimba is its own mod, with
-its own `About.xml`, its own `packageId` (`sloppymod.riimba`), its own assembly and no
-shared code - it just happens to live in this repository. RimWorld will not see it while
-it is nested inside another mod folder, so to play it, copy **this folder** into your
-`RimWorld/Mods/` directory:
+This repository IS the mod, so it can be cloned straight into your mods folder:
+
+```sh
+git clone <this repo> "RimWorld/Mods/Riimba"
+```
+
+Then build the assembly (below) and enable it in the mod list. A release copy needs only:
 
 ```
-RimWorld/Mods/Riimba/
+Riimba/
     About/
     Assemblies/
     Defs/
@@ -23,6 +25,10 @@ RimWorld/Mods/Riimba/
 ```
 
 `Source/` does not need to ship.
+
+Riimba began life in the `Riimba/` folder of the SloppyMods Mending Solutions repository
+and was split out with `git subtree split`, so the history here is its own from the first
+commit. The two mods share no code and neither depends on the other.
 
 ## Requirements
 
@@ -35,7 +41,7 @@ RimWorld/Mods/Riimba/
 ## Building the assembly
 
 ```sh
-dotnet build Riimba/Source/RiimbaMod/RiimbaMod.csproj
+dotnet build Source/RiimbaMod/RiimbaMod.csproj
 ```
 
 Output goes to `Riimba/Assemblies/`, which is gitignored.

@@ -8,7 +8,7 @@ RimWorld looks for both at those exact filenames under About/ - see
 ModMetaData.PreviewImagePath and ModIconImagePath - so no path entry is needed in
 About.xml.
 
-    python3 Riimba/Source/Art/make_about_art.py      # from the repo root
+    python3 Source/Art/make_about_art.py      # from the repo root
 """
 
 import os
@@ -23,9 +23,9 @@ from riimba_draw import TEAL  # noqa: E402
 PREVIEW = (640, 360)
 ICON = (256, 256)
 
-UNIT_DIR = os.path.join("Riimba", "Textures", "Things", "Pawn", "Riimba")
-STATION_DIR = os.path.join("Riimba", "Textures", "Things", "Building", "Riimba")
-ABOUT_DIR = os.path.join("Riimba", "About")
+UNIT_DIR = os.path.join("Textures", "Things", "Pawn", "Riimba")
+STATION_DIR = os.path.join("Textures", "Things", "Building", "Riimba")
+ABOUT_DIR = os.path.join("About")
 
 # A mid-grey floor with a slight green cast, which is roughly what RimWorld's sterile
 # tile reads as under the default lighting. The art has to survive being seen on that,
