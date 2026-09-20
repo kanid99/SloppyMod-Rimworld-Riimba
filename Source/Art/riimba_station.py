@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Draws the Riimba control station's three rotations.
 
-The station is 3x1 and its three docking bays sit one per cell along the edge it
-FACES. That is not a decoration: RiimbaSpots.BayCells takes the row of cells outside
-rot.FacingCell, and Building_RiimbaStation sends each unit to the bay matching its
-roster position. So the art has to put a bay where the C# puts one, for every rotation,
-or a unit drives to a blank stretch of casing to charge.
+The station is 3x2 and its three docking bays are the three cells of the FRONT row, the
+row the building faces - inside its own footprint, not on the walkway in front of it. That
+is not a decoration: RiimbaSpots.BayCells returns exactly that row and
+Building_RiimbaStation sends each unit to the bay matching its roster position. So the art
+has to put a bay where the C# puts one, for every rotation, or a unit drives to a blank
+stretch of casing to charge.
 
 Which means the rotations cannot be made by rotating one image:
 
@@ -41,11 +42,20 @@ DEPTH = 2                # cells front-to-back
 LONG = CELL * CELLS      # 576
 SHORT = CELL * DEPTH     # 384
 
-# How far the machine overhangs its own bays, in cells. This band is drawn a second time as
-# a separate texture ABOVE pawn altitude, so a unit reversing in slides under it. Deep enough
-# to swallow the back third of a 1.1-cell disc parked on the bay's centre, no deeper - every
-# extra pixel is also clipped off any colonist who walks onto the bay.
-LIP_DEPTH = 0.35
+# How far the machine overhangs its own bays, in cells, measured back from the seam between the
+# bay row and the body row. The band is drawn a second time as a separate texture ABOVE pawn
+# altitude, so a unit reversing in slides under it.
+#
+# The unit's shell is a disc filling about 0.79 of a cell - its sprite is 1.1 cells but padded -
+# so a unit parked on a bay centre reaches from 0.10 to 0.89 cells in from the front edge, and
+# this number decides how much of that gets tucked away. At 0.45 it is a little over two fifths,
+# which reads as having driven INTO the machine; the 0.35 this started at hid under a third and
+# read as parked against it. Deeper is not free: every extra pixel is also clipped off any
+# colonist who walks onto a bay.
+#
+# verify_bays.py composites the real sprite onto each bay and checks the share this hides, so a
+# change here is measured against the art rather than judged from a screenshot.
+LIP_DEPTH = 0.45
 
 # How far a bay is cut into the chassis. Kept under a third of the short side: a bay
 # deep enough to swallow the casing would leave the station reading as three separate
@@ -230,7 +240,11 @@ def lip_band(draw, box, shadow_edge):
 
 
 def horizontal_geometry(bays_at_top):
-    """Where the rows and the lip sit, for a station facing north or south."""
+    """Where the rows and the lip sit, for a station facing north or south.
+
+    lamp is the line the bay lamps sit on: half the band's depth from its open edge, so they
+    stay on the overhanging part rather than drifting towards the chassis as it gets deeper.
+    """
     lip_px = CELL * LIP_DEPTH
 
     if bays_at_top:
@@ -238,20 +252,22 @@ def horizontal_geometry(bays_at_top):
         lip_box = (MARGIN, CELL - lip_px, LONG - MARGIN, CELL)
         open_dir, shadow = "up", "up"
         body_y = CELL * 1.5
+        lamp = CELL - lip_px * 0.5
     else:
         front_y0, front_y1 = CELL, SHORT          # bays occupy the bottom row
         lip_box = (MARGIN, CELL, LONG - MARGIN, CELL + lip_px)
         open_dir, shadow = "down", "down"
         body_y = CELL * 0.5
+        lamp = CELL + lip_px * 0.5
 
-    return front_y0, front_y1, lip_box, open_dir, shadow, body_y
+    return front_y0, front_y1, lip_box, open_dir, shadow, body_y, lamp
 
 
 def draw_horizontal(bays_at_top):
     image, draw = new_canvas(LONG, SHORT)
     chassis(draw, LONG, SHORT)
 
-    front_y0, front_y1, lip_box, open_dir, shadow, body_y = horizontal_geometry(bays_at_top)
+    front_y0, front_y1, lip_box, open_dir, shadow, body_y, lamp_y = horizontal_geometry(bays_at_top)
 
     subcore_window(draw, LONG / 2, body_y, 150, 62)
     vent_block(draw, CELL * 0.5, body_y, horizontal=True)
@@ -263,7 +279,7 @@ def draw_horizontal(bays_at_top):
 
     lip_band(draw, lip_box, shadow)
     for i in range(CELLS):
-        bay_lamp(draw, CELL * (i + 0.5), (lip_box[1] + lip_box[3]) / 2)
+        bay_lamp(draw, CELL * (i + 0.5), lamp_y)
 
     return finish(image, LONG, SHORT)
 
@@ -271,25 +287,27 @@ def draw_horizontal(bays_at_top):
 def draw_horizontal_lip(bays_at_top):
     """The overhang alone, on a transparent canvas the same size as the station."""
     image, draw = new_canvas(LONG, SHORT)
-    _, _, lip_box, _, shadow, _ = horizontal_geometry(bays_at_top)
+    _, _, lip_box, _, shadow, _, lamp_y = horizontal_geometry(bays_at_top)
 
     lip_band(draw, lip_box, shadow)
     for i in range(CELLS):
-        bay_lamp(draw, CELL * (i + 0.5), (lip_box[1] + lip_box[3]) / 2)
+        bay_lamp(draw, CELL * (i + 0.5), lamp_y)
 
     return finish(image, LONG, SHORT)
 
 
 def east_geometry():
+    """Same as horizontal_geometry, with the bays on the right and the body on the left."""
     lip_px = CELL * LIP_DEPTH
-    return (CELL, SHORT), (CELL, MARGIN, CELL + lip_px, LONG - MARGIN), "right", "right", CELL * 0.5
+    lip_box = (CELL, MARGIN, CELL + lip_px, LONG - MARGIN)
+    return (CELL, SHORT), lip_box, "right", "right", CELL * 0.5, CELL + lip_px * 0.5
 
 
 def draw_east():
     image, draw = new_canvas(SHORT, LONG)
     chassis(draw, SHORT, LONG)
 
-    lip_box, open_dir, shadow, body_x = east_geometry()[1:]
+    lip_box, open_dir, shadow, body_x, lamp_x = east_geometry()[1:]
 
     subcore_window(draw, body_x, LONG / 2, 62, 150)
     vent_block(draw, body_x, CELL * 0.5, horizontal=False)
@@ -300,18 +318,18 @@ def draw_east():
 
     lip_band(draw, lip_box, shadow)
     for i in range(CELLS):
-        bay_lamp(draw, (lip_box[0] + lip_box[2]) / 2, CELL * (i + 0.5))
+        bay_lamp(draw, lamp_x, CELL * (i + 0.5))
 
     return finish(image, SHORT, LONG)
 
 
 def draw_east_lip():
     image, draw = new_canvas(SHORT, LONG)
-    lip_box, _, shadow, _ = east_geometry()[1:]
+    lip_box, _, shadow, _, lamp_x = east_geometry()[1:]
 
     lip_band(draw, lip_box, shadow)
     for i in range(CELLS):
-        bay_lamp(draw, (lip_box[0] + lip_box[2]) / 2, CELL * (i + 0.5))
+        bay_lamp(draw, lamp_x, CELL * (i + 0.5))
 
     return finish(image, SHORT, LONG)
 

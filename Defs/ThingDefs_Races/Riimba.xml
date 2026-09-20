@@ -94,7 +94,7 @@ When the bin fills or the charge runs low it drives itself back to a docking bay
     <comps>
       <li Class="RiimbaMod.CompProperties_RiimbaUnit">
         <!-- A full charge is 2.5 in-game days of continuous cleaning, or 10 days idling.
-             Returning at 25% leaves far more than enough to cross a ten tile radius. -->
+             Returning at 25% leaves far more than enough to cross the station's radius. -->
         <chargeFallPerDayWorking>0.40</chargeFallPerDayWorking>
         <chargeFallPerDayIdle>0.10</chargeFallPerDayIdle>
         <chargeGainPerDayDocked>6.0</chargeGainPerDayDocked>

@@ -2,7 +2,7 @@
 
 A semi-autonomous cleaning drone for RimWorld 1.6. Gestated at a mech gestator like any
 light mech, but driven by a control station rather than by a mechanitor: one station
-commands up to three units inside a ten tile radius, charges them at its docking bays,
+commands up to three units inside a fifteen tile radius, charges them at its docking bays,
 and takes the waste they collect.
 
 ## Installing

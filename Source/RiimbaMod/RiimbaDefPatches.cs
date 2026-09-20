@@ -30,6 +30,7 @@ namespace RiimbaMod
             AddBuildCost("RiimbaStation", 1, "basic subcore", missing, "SubcoreBasic", "BasicSubcore");
 
             StripOverseerSubject();
+            EnsureStationDrawsRealtime();
 
             if (Prefs.DevMode && missing.Count > 0)
             {
@@ -59,6 +60,24 @@ namespace RiimbaMod
 
             if (Prefs.DevMode && removed > 0)
                 Log.Message($"[Riimba] Removed {removed} overseer subject comp(s) from the Riimba def.");
+        }
+
+        // The docking overhang is drawn from Building_RiimbaStation.DrawAt, and DrawAt is not
+        // called at all on a MapMeshOnly thing - Thing.DynamicDrawPhase returns early for one.
+        // BuildingBase is MapMeshOnly, so the station's XML sets MapMeshAndRealTime; this is the
+        // belt to that braces, because the failure mode is silent. Nothing errors, nothing logs:
+        // the overhang simply never draws, and a unit that should be tucked half under the machine
+        // sits squarely on top of it instead. Cheap insurance against another mod's patch, or a
+        // future edit to the def, quietly turning the effect off again.
+        private static void EnsureStationDrawsRealtime()
+        {
+            ThingDef station = DefDatabase<ThingDef>.GetNamedSilentFail("RiimbaStation");
+            if (station == null || station.drawerType != DrawerType.MapMeshOnly)
+                return;
+
+            station.drawerType = DrawerType.MapMeshAndRealTime;
+            Log.Warning("[Riimba] RiimbaStation was MapMeshOnly, which stops its docking overhang "
+                + "drawing at all; forced to MapMeshAndRealTime.");
         }
 
         private static void AddPrerequisites(string projectName, List<string> missing, params string[] candidates)

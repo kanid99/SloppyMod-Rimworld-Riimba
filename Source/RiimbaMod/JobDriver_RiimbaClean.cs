@@ -97,7 +97,11 @@ namespace RiimbaMod
                 }
             };
             clean.defaultCompleteMode = ToilCompleteMode.Never;
-            clean.WithEffect(EffecterDefOf.Clean, TargetIndex.A);
+            // NO WithEffect(EffecterDefOf.Clean) here, deliberately. That is vanilla's broom
+            // mote, and it floats above the head of whatever is cleaning - which reads fine over a
+            // colonist with a besom and absurd over a sealed drone that has no arms to hold one.
+            // The unit's own side brush spins while this toil runs (see CompRiimbaUnit), so the
+            // machine still visibly signals that it is working, with its own hardware.
             clean.WithProgressBar(TargetIndex.A, () => totalCleaningWorkDone / totalCleaningWorkRequired, interpolateBetweenActorAndTarget: true);
             clean.PlaySustainerOrSound(delegate
             {

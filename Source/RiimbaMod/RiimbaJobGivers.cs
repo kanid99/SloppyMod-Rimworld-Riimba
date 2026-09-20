@@ -151,7 +151,7 @@ namespace RiimbaMod
     public class JobGiver_RiimbaClean : ThinkNode_JobGiver
     {
         // How many messes to queue into one job. Vanilla uses 15 for a colonist; a drone that is
-        // leashed to a ten tile radius rarely finds that many, and the cap mostly stops a single
+        // leashed to one station's radius rarely finds that many, and the cap mostly stops a single
         // job outliving the charge that was meant to pay for it.
         private const int MaxQueued = 15;
 

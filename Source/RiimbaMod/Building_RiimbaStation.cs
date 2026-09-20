@@ -216,8 +216,15 @@ namespace RiimbaMod
 
         private string LipTexPath => def.graphicData.texPath + "Lip";
 
+        // Only reached because the def sets drawerType to MapMeshAndRealTime. BuildingBase is
+        // MapMeshOnly, and Thing.DynamicDrawPhase does not call DrawAt on a MapMeshOnly thing at
+        // all - so with the inherited value this method is dead code and the overhang never
+        // appears, with nothing logged to say why. RiimbaDefPatches re-checks it on startup.
         protected override void DrawAt(Vector3 drawLoc, bool flip = false)
         {
+            // Draws nothing of the chassis: Thing.DrawAt draws the graphic only when drawerType is
+            // RealtimeOnly, and ours is printed into the map mesh. It is still called for the
+            // silhouette handling that lives in there.
             base.DrawAt(drawLoc, flip);
 
             Graphic lip = LipGraphic;

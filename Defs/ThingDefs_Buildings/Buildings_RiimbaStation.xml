@@ -14,6 +14,14 @@ Needs power to command and to charge. Cut the power and every unit signed on to 
          never charges a docked unit, never drains its waste buffer, and never notices that a
          unit it is holding a slot for has been destroyed. -->
     <tickerType>Normal</tickerType>
+    <!-- Load-bearing, and not obvious: BuildingBase sets MapMeshOnly, and Thing.DynamicDrawPhase
+         returns without doing anything for a MapMeshOnly thing - so DrawAt is never called on it
+         at all. That is what silently swallowed the docking overhang: Building_RiimbaStation.DrawAt
+         was correct and simply never ran. MapMeshAndRealTime keeps the chassis printed into the map
+         mesh, as a static building should be, AND gets DrawAt called every frame for the overhang.
+         It does not double-draw the chassis: Thing.DrawAt only draws the graphic itself when
+         drawerType is RealtimeOnly. -->
+    <drawerType>MapMeshAndRealTime</drawerType>
     <graphicData>
       <texPath>Things/Building/Riimba/RiimbaStation</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
@@ -43,7 +51,9 @@ Needs power to command and to charge. Cut the power and every unit signed on to 
     <pathCost>50</pathCost>
     <fillPercent>0.5</fillPercent>
     <constructEffect>ConstructMetal</constructEffect>
-    <designationCategory>Production</designationCategory>
+    <!-- Biotech rather than Production: nothing is produced here. It is mech infrastructure,
+         built around a subcore, and it belongs next to the gestator that makes its drones. -->
+    <designationCategory>Biotech</designationCategory>
     <rotatable>true</rotatable>
     <!-- Uninstall and reinstall without losing the team: Building_RiimbaStation.DeSpawn hands
          its units back rather than stranding them bound to a building in a crate. -->
@@ -69,7 +79,7 @@ Needs power to command and to charge. Cut the power and every unit signed on to 
          three numbers is a comp that has to be looked up on every call for nothing. -->
     <modExtensions>
       <li Class="RiimbaMod.RiimbaStationExtension">
-        <radius>10</radius>
+        <radius>15</radius>
         <maxUnits>3</maxUnits>
         <!-- Watts added per unit actually charging on a bay. -->
         <powerPerChargingUnit>150</powerPerChargingUnit>
