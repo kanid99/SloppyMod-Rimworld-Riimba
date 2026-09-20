@@ -87,9 +87,11 @@ namespace RiimbaMod
             listing.CheckboxLabeled(
                 "Units stay inside their station's radius",
                 ref Settings.enforceRadius,
-                "When enabled, a unit only cleans within its station's broadcast radius, which is "
-                + "what the ring drawn around the station shows. Turn this off and a unit will "
-                + "work anywhere it can reach on the map, while still docking at its station.");
+                "When enabled, a unit only cleans within its station's broadcast radius - the "
+                + "ring drawn around the station, set per station with the command on it, and "
+                + "paid for in power. Turn this off and a unit works anywhere it can reach on "
+                + "the map, while still docking at its station; the radius then costs nothing "
+                + "to hold, because it is no longer holding anything in.");
 
             listing.Gap();
             if (listing.ButtonText("Reset to defaults"))

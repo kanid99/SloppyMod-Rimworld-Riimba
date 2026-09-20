@@ -26,6 +26,12 @@ namespace RiimbaMod
         private CompRiimbaWasteBuffer wasteBuffer;
         private RiimbaStationExtension extension;
 
+        // The player's setting for this station, or negative for "never touched, use the def's".
+        // Storing the sentinel rather than copying the def's value in at build time means an
+        // existing save picks up a changed default, and a station the player HAS adjusted keeps
+        // the number they chose.
+        private float commandRadius = -1f;
+
         private RiimbaStationExtension Extension =>
             extension ?? (extension = def.GetModExtension<RiimbaStationExtension>() ?? new RiimbaStationExtension());
 
@@ -40,7 +46,36 @@ namespace RiimbaMod
 
         public int MaxUnits => Extension.maxUnits;
 
-        public float Radius => Extension.radius;
+        public float MinRadius => Extension.minRadius;
+
+        public float MaxRadius => Mathf.Max(Extension.minRadius, Extension.maxRadius);
+
+        // Clamped on the way out rather than only on the way in, so a save written when the def
+        // allowed a bigger ring - a settings change, a mod update - comes back inside the range
+        // the def allows now instead of keeping a value the slider can no longer produce.
+        public float Radius => Mathf.Clamp(commandRadius < 0f ? Extension.radius : commandRadius,
+            MinRadius, MaxRadius);
+
+        public void SetRadius(float value)
+        {
+            commandRadius = Mathf.Clamp(value, MinRadius, MaxRadius);
+
+            // The draw changes the moment the ring does, rather than at the next tick: a player
+            // who has just dragged the slider is looking straight at the power figure.
+            UpdatePowerDraw();
+        }
+
+        // What a given ring costs to broadcast. Public because the slider quotes it live while
+        // the player drags, which is the whole point of charging for reach: the trade has to be
+        // visible at the moment the choice is made, not discovered later in the power tab.
+        public float PowerForRadius(float radius)
+        {
+            if (!RiimbaModMain.Settings.enforceRadius)
+                return 0f;
+
+            float covered = Mathf.PI * (radius * radius - MinRadius * MinRadius);
+            return Mathf.Max(0f, covered * Extension.powerPerCoveredTile);
+        }
 
         public bool HasFreeSlot => units.Count < MaxUnits;
 
@@ -56,6 +91,7 @@ namespace RiimbaMod
         {
             base.ExposeData();
             Scribe_Collections.Look(ref units, "units", LookMode.Reference);
+            Scribe_Values.Look(ref commandRadius, "commandRadius", -1f);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit && units == null)
                 units = new List<Pawn>();
@@ -171,8 +207,9 @@ namespace RiimbaMod
         }
 
         // Charging costs real power, so a station with three units on its bays draws far more
-        // than an idle one. Without this the building would cost the same whether it was doing
-        // anything or not, which is the kind of free lunch that makes automation a no-brainer.
+        // than an idle one, and so does a wide command radius. Without this the building would
+        // cost the same whether it was doing anything or not, which is the kind of free lunch
+        // that makes automation a no-brainer.
         private void UpdatePowerDraw()
         {
             if (Power == null)
@@ -189,7 +226,9 @@ namespace RiimbaMod
                 }
             }
 
-            Power.PowerOutput = -(Power.Props.PowerConsumption + charging * Extension.powerPerChargingUnit);
+            Power.PowerOutput = -(Power.Props.PowerConsumption
+                + PowerForRadius(Radius)
+                + charging * Extension.powerPerChargingUnit);
         }
 
         // The overhang, drawn a second time above pawn altitude so a unit reversing into a bay
@@ -253,6 +292,31 @@ namespace RiimbaMod
             RiimbaSpots.DrawSpots(Footprint, Rotation, RiimbaModMain.Settings.enforceRadius ? Radius : 0f);
         }
 
+        public override IEnumerable<Gizmo> GetGizmos()
+        {
+            foreach (Gizmo gizmo in base.GetGizmos())
+                yield return gizmo;
+
+            if (Faction != Faction.OfPlayer)
+                yield break;
+
+            Command_RiimbaRadius command = new Command_RiimbaRadius
+            {
+                station = this,
+                defaultLabel = "Riimba.SetRadiusLabel".Translate(),
+                defaultDesc = "Riimba.SetRadiusDesc".Translate(),
+                icon = RiimbaTextures.SetRadius,
+            };
+
+            // The ring does nothing when the leash is switched off in the mod settings, and it
+            // costs nothing either - so the command says so rather than quietly setting a number
+            // that has no effect on anything.
+            if (!RiimbaModMain.Settings.enforceRadius)
+                command.Disable("Riimba.SetRadiusDisabled".Translate());
+
+            yield return command;
+        }
+
         public override string GetInspectString()
         {
             StringBuilder sb = new StringBuilder(base.GetInspectString());
@@ -267,6 +331,13 @@ namespace RiimbaMod
             else
             {
                 sb.Append("Riimba.StationUnits".Translate(units.Count, MaxUnits));
+
+                if (RiimbaModMain.Settings.enforceRadius)
+                {
+                    sb.AppendLine();
+                    sb.Append("Riimba.StationRadius".Translate(
+                        Radius.ToString("F0"), PowerForRadius(Radius).ToString("F0")));
+                }
 
                 int docked = 0;
                 foreach (Pawn unit in units)

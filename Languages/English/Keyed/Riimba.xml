@@ -19,6 +19,12 @@
   <Riimba.StationNoPower>Unpowered - every unit signed on to it is parked.</Riimba.StationNoPower>
   <Riimba.StationUnits>Units signed on: {0}/{1}</Riimba.StationUnits>
   <Riimba.StationDocked>Docked and charging: {0}</Riimba.StationDocked>
+  <Riimba.StationRadius>Command radius: {0} tiles ({1} W)</Riimba.StationRadius>
+  <Riimba.SetRadiusLabel>Set command radius</Riimba.SetRadiusLabel>
+  <Riimba.SetRadiusDesc>Set how far this station broadcasts. Units only clean inside the ring, and holding a wider one draws sharply more power: the cost follows the floor area covered, so the last few tiles of reach are the expensive ones.\n\nApplies to every selected station.</Riimba.SetRadiusDesc>
+  <Riimba.SetRadiusDisabled>The radius is switched off in this mod's settings - units clean anywhere their station can reach, and the ring costs nothing to hold.</Riimba.SetRadiusDisabled>
+  <Riimba.RadiusSlider>Command radius: {0} tiles\nBroadcast draw: {1} W</Riimba.RadiusSlider>
+
   <Riimba.StationLegend>Cyan spots: docking bays. Orange spot: waste out.</Riimba.StationLegend>
 
   <!-- Waste -->

@@ -6,6 +6,8 @@
     <label>riimba control station</label>
     <description>The brain and the garage for a team of Riimba cleaning drones. A basic subcore inside plans the routes; the drones themselves only execute them, and they stop dead outside the station's broadcast radius.
 
+Set its broadcast radius with the command on the building: a wider ring covers more floor but costs sharply more power to hold, because the draw follows the area commanded rather than the distance.
+
 Select it to see that radius and its three docking bays, which are the three open cells along the edge it faces. A unit drives up to its bay, turns, and reverses in under the overhang. Up to three sign on to one station. A docked unit charges and hands over whatever it has collected, and the station puts that waste down on the spot behind it - trash from ordinary dirt, wastepacks from anything that came out of a body.
 
 Needs power to command and to charge. Cut the power and every unit signed on to it parks and waits.</description>
@@ -79,7 +81,15 @@ Needs power to command and to charge. Cut the power and every unit signed on to 
          three numbers is a comp that has to be looked up on every call for nothing. -->
     <modExtensions>
       <li Class="RiimbaMod.RiimbaStationExtension">
+        <!-- Where a new station's radius slider starts, and how far it goes either way. -->
         <radius>15</radius>
+        <minRadius>6</minRadius>
+        <maxRadius>30</maxRadius>
+        <!-- Watts per tile of floor inside the ring, beyond what the smallest setting already
+             covers - so the draw grows with the AREA commanded, not with the radius. At the
+             default 15 that is about 119 W; at the full 30 it is about 543 W. See
+             RiimbaStationExtension for why it is charged by area. -->
+        <powerPerCoveredTile>0.2</powerPerCoveredTile>
         <maxUnits>3</maxUnits>
         <!-- Watts added per unit actually charging on a bay. -->
         <powerPerChargingUnit>150</powerPerChargingUnit>
@@ -88,8 +98,9 @@ Needs power to command and to charge. Cut the power and every unit signed on to 
     <comps>
       <li Class="CompProperties_Power">
         <compClass>CompPowerTrader</compClass>
-        <!-- Idle command draw. Charging a docked unit adds to this - see Building_RiimbaStation,
-             which raises PowerOutput while any bay is occupied. -->
+        <!-- The floor: the subcore thinking, with the ring at its smallest. The broadcast
+             surcharge for a wider radius and the draw of any unit actually charging are added
+             on top of this by Building_RiimbaStation. -->
         <basePowerConsumption>100</basePowerConsumption>
       </li>
       <li Class="CompProperties_Flickable" />
