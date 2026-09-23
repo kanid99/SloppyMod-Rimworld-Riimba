@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    The two numbers the station's facilities change. Stats rather than bespoke fields because
+    that is how vanilla facilities reach a building: a facility's statOffsets are applied to
+    whatever it links to through CompAffectedByFacilities.GetStatOffset, and the stat's
+    explanation then lists each contributing facility on its own line, for free.
+  -->
+
+  <StatDef>
+    <defName>RiimbaChargeSpeed</defName>
+    <label>charge speed</label>
+    <description>How fast units charge on this station's docking bays, as a multiple of the base rate. Faster charging draws proportionally more power while it runs: the same energy goes into the unit, in less time.</description>
+    <category>Building</category>
+    <defaultBaseValue>1</defaultBaseValue>
+    <minValue>0.1</minValue>
+    <toStringStyle>PercentZero</toStringStyle>
+    <showIfUndefined>false</showIfUndefined>
+    <displayPriorityInCategory>3100</displayPriorityInCategory>
+  </StatDef>
+
+  <StatDef>
+    <defName>RiimbaRadiusBonus</defName>
+    <label>command radius bonus</label>
+    <description>How many tiles this station's command radius can be set beyond its normal maximum. Every extra tile still costs broadcast power by the area it covers.</description>
+    <category>Building</category>
+    <defaultBaseValue>0</defaultBaseValue>
+    <minValue>0</minValue>
+    <toStringStyle>Integer</toStringStyle>
+    <formatString>{0} tiles</formatString>
+    <showIfUndefined>false</showIfUndefined>
+    <displayPriorityInCategory>3090</displayPriorityInCategory>
+  </StatDef>
+
+</Defs>

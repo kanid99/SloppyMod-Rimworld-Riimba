@@ -103,6 +103,11 @@ namespace RiimbaMod
             // deliberate: three units filling their bins is a steady trickle, and a station
             // that had to be emptied by hand every few minutes would be worse than sweeping
             // the floor yourself.
+            // The defs are resolved lazily, and until now only a handover resolved them - so a
+            // save loaded with waste already buffered sat on it until the next unit docked.
+            if (bioBuffer > 0f || trashBuffer > 0f)
+                ResolveWasteDefsOnce();
+
             SpawnWholeItems(ref bioBuffer, bioWasteDef);
             SpawnWholeItems(ref trashBuffer, trashWasteDef);
         }
@@ -117,8 +122,26 @@ namespace RiimbaMod
             if (count <= 0)
                 return;
 
-            if (SpawnWaste(wasteDef, count))
+            int piped = PipeIfTrash(wasteDef, count);
+            buffer -= piped * threshold;
+            count -= piped;
+
+            if (count > 0 && SpawnWaste(wasteDef, count))
                 buffer -= count * threshold;
+        }
+
+        // Trash goes down the chute when the player has chosen that and this station is on one;
+        // whatever the chute cannot take comes back and is put on the spot as usual.
+        //
+        // Only genuine trash. When this install has no trash item and the trash buffer fell back
+        // to the wastepack def, what is being emitted is a wastepack, and the chute - a trash
+        // network feeding a trash compactor - is no place for one.
+        private int PipeIfTrash(ThingDef wasteDef, int count)
+        {
+            if (wasteDef != trashWasteDef || trashWasteDef == bioWasteDef)
+                return 0;
+
+            return RiimbaWasteRouting.TryPushTrash(parent as Building_RiimbaStation, count);
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
@@ -224,7 +247,7 @@ namespace RiimbaMod
         // defName first because it is exact and cheap, then the item's visible label as a
         // fallback: a rename upstream should degrade to "find the item actually called trash",
         // not to silently producing the wrong kind of waste.
-        private static ThingDef ResolveDef(List<string> candidates, string label)
+        internal static ThingDef ResolveDef(List<string> candidates, string label)
         {
             foreach (string candidate in candidates ?? new List<string>())
             {
@@ -268,6 +291,13 @@ namespace RiimbaMod
         {
             if (parent is Building_RiimbaStation station)
             {
+                // A linked hopper takes over from the spot. It is a storage building, so what
+                // lands in it is stored rather than scattered, and it is the obvious place to
+                // point a conveyor belt or a hauling zone at.
+                Thing hopper = station.LinkedHopper;
+                if (hopper != null)
+                    return hopper.Position;
+
                 IntVec3 output = station.WasteOutputCell;
                 if (output.InBounds(parent.Map) && output.Walkable(parent.Map))
                     return output;

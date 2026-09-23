@@ -72,6 +72,9 @@ Needs power to command and to charge. Cut the power and every unit signed on to 
       <Mass>55</Mass>
       <Flammability>0.4</Flammability>
       <Beauty>-4</Beauty>
+      <!-- Listed so they show on the info card; linked facilities raise them. -->
+      <RiimbaChargeSpeed>1</RiimbaChargeSpeed>
+      <RiimbaRadiusBonus>0</RiimbaRadiusBonus>
     </statBases>
     <researchPrerequisites>
       <li>RiimbaCleaning</li>
@@ -104,6 +107,13 @@ Needs power to command and to charge. Cut the power and every unit signed on to 
         <basePowerConsumption>100</basePowerConsumption>
       </li>
       <li Class="CompProperties_Flickable" />
+      <li Class="CompProperties_AffectedByFacilities">
+        <linkableFacilities>
+          <li>RiimbaFastChargePad</li>
+          <li>RiimbaSignalRelay</li>
+          <li>RiimbaWasteHopper</li>
+        </linkableFacilities>
+      </li>
       <li Class="RiimbaMod.CompProperties_RiimbaWasteBuffer">
         <!-- One whole waste item per unit of buffered filth. -->
         <wasteBufferThreshold>1</wasteBufferThreshold>

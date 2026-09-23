@@ -10,7 +10,12 @@ namespace RiimbaMod
         public static JobDef Riimba_Dock;
         public static JobDef Riimba_SignOn;
 
+        public static ThingDef Riimba;
         public static ThingDef RiimbaStation;
+        public static ThingDef RiimbaWasteHopper;
+
+        public static StatDef RiimbaChargeSpeed;
+        public static StatDef RiimbaRadiusBonus;
 
         static RiimbaDefOf()
         {

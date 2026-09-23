@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<loadFolders>
+  <!--
+    The root holds the mod proper. Mods/TrashChute holds the optional trash chute, which is built
+    on Vanilla Expanded Framework's pipe system and feeds Vanilla Recycling Expanded's garbage
+    compactor, so it is only loaded when both are active - its assembly references the framework
+    and its defs name VRE's trash.
+  -->
+  <v1.6>
+    <li>/</li>
+    <li IfModActiveAll="OskarPotocki.VanillaFactionsExpanded.Core,VanillaExpanded.Recycling">Mods/TrashChute</li>
+  </v1.6>
+</loadFolders>

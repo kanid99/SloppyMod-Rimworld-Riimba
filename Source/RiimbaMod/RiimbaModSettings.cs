@@ -3,6 +3,21 @@ using Verse;
 
 namespace RiimbaMod
 {
+    // Where a station puts the trash its units bring back. Wastepacks always go to the output
+    // spot whichever this is: the chute carries trash, and a wastepack is not trash - it is the
+    // sealed bio-waste that Vanilla Recycling Expanded processes somewhere else entirely.
+    public enum RiimbaWasteOutput
+    {
+        // The station's output spot, or a waste hopper linked to it. Haulers and conveyor mods
+        // pick up from there.
+        Spot,
+
+        // The trash chute pipe network. Only available with Vanilla Recycling Expanded loaded,
+        // which brings the pipe framework and the compactor the chute feeds; without it this
+        // behaves as Spot.
+        Chute,
+    }
+
     public class RiimbaModSettings : ModSettings
     {
         // Off means units clean without producing anything. The station's waste readout and dump
@@ -20,6 +35,13 @@ namespace RiimbaMod
         // The station still commands it and still takes its waste.
         public bool enforceRadius = true;
 
+        // On means a unit goes to messes in a hospital first and a kitchen second before the
+        // nearest one anywhere else. Those are the two rooms where dirt does harm rather than
+        // just looking bad - infection after surgery, food poisoning from the stove.
+        public bool prioritizeRooms = true;
+
+        public RiimbaWasteOutput wasteOutput = RiimbaWasteOutput.Spot;
+
         // Field-by-field rather than replacing the settings object, because Mod.GetSettings hands
         // out a single instance that everything else already holds a reference to.
         public void ResetToDefaults()
@@ -30,6 +52,8 @@ namespace RiimbaMod
             wasteMultiplier = defaults.wasteMultiplier;
             chargeDrainMultiplier = defaults.chargeDrainMultiplier;
             enforceRadius = defaults.enforceRadius;
+            prioritizeRooms = defaults.prioritizeRooms;
+            wasteOutput = defaults.wasteOutput;
         }
 
         public override void ExposeData()
@@ -39,11 +63,42 @@ namespace RiimbaMod
             Scribe_Values.Look(ref wasteMultiplier, "wasteMultiplier", 1.0f);
             Scribe_Values.Look(ref chargeDrainMultiplier, "chargeDrainMultiplier", 1.0f);
             Scribe_Values.Look(ref enforceRadius, "enforceRadius", true);
+            Scribe_Values.Look(ref prioritizeRooms, "prioritizeRooms", true);
+            Scribe_Values.Look(ref wasteOutput, "wasteOutput", RiimbaWasteOutput.Spot);
         }
     }
 
     public class RiimbaModMain : Mod
     {
+        private static void WasteOutputSelector(Listing_Standard listing)
+        {
+            listing.Label("    Trash goes to:");
+
+            if (listing.RadioButton("The output spot",
+                    Settings.wasteOutput == RiimbaWasteOutput.Spot, tabIn: 24f,
+                    tooltip: "Put out on the station's output spot, or into a waste hopper linked "
+                        + "to it. Haulers collect it from there, and so will a conveyor belt "
+                        + "pointed at a hopper."))
+                Settings.wasteOutput = RiimbaWasteOutput.Spot;
+
+            // Offered only when the chute can actually exist. Selecting it without the pipe
+            // framework loaded would be a setting that silently does nothing.
+            if (RiimbaWasteRouting.ChuteAvailable)
+            {
+                if (listing.RadioButton("The trash chute",
+                        Settings.wasteOutput == RiimbaWasteOutput.Chute, tabIn: 24f,
+                        tooltip: "Piped away through trash chutes connected to the station, into "
+                            + "a garbage compactor or a chute outlet. A station that is not "
+                            + "connected, or whose chute is full, falls back to its output spot "
+                            + "rather than holding the trash. Wastepacks always use the spot."))
+                    Settings.wasteOutput = RiimbaWasteOutput.Chute;
+            }
+            else
+            {
+                listing.Label("        The trash chute needs Vanilla Recycling Expanded.");
+            }
+        }
+
         public static RiimbaModSettings Settings;
 
         public RiimbaModMain(ModContentPack content) : base(content)
@@ -71,6 +126,9 @@ namespace RiimbaMod
                 Settings.wasteMultiplier = listing.Slider(Settings.wasteMultiplier, 0f, 3f);
                 listing.Label("    Scales both trash and wastepacks. Bin capacity is unchanged, so "
                             + "a higher setting also means more trips back to the station.");
+
+                listing.Gap(6f);
+                WasteOutputSelector(listing);
             }
 
             listing.Gap();
@@ -92,6 +150,17 @@ namespace RiimbaMod
                 + "paid for in power. Turn this off and a unit works anywhere it can reach on "
                 + "the map, while still docking at its station; the radius then costs nothing "
                 + "to hold, because it is no longer holding anything in.");
+
+            listing.Gap();
+            Header(listing, "Work");
+
+            listing.CheckboxLabeled(
+                "Clean hospitals and kitchens first",
+                ref Settings.prioritizeRooms,
+                "When enabled, a unit clears every mess it can reach in a hospital before anything "
+                + "else, then every mess in a kitchen, and only then goes to whatever is nearest. "
+                + "Those are the rooms where dirt raises the chance of infection and of food "
+                + "poisoning. Turn this off and units simply clean whatever is closest.");
 
             listing.Gap();
             if (listing.ButtonText("Reset to defaults"))

@@ -13,7 +13,7 @@ This repository IS the mod, so it can be cloned straight into your mods folder:
 git clone https://github.com/kanid99/SloppyMod-Rimworld-Riimba.git "RimWorld/Mods/Riimba"
 ```
 
-Then build the assembly (below) and enable it in the mod list. A release copy needs only:
+Then build the assemblies (below) and enable it in the mod list. A release copy needs only:
 
 ```
 Riimba/
@@ -21,6 +21,8 @@ Riimba/
     Assemblies/
     Defs/
     Languages/
+    LoadFolders.xml
+    Mods/TrashChute/     the optional trash chute - see below
     Textures/
 ```
 
@@ -38,13 +40,23 @@ commit. The two mods share no code and neither depends on the other.
   station falls back to putting everything out as wastepacks; the def names it looks for
   are XML-tunable in `Defs/ThingDefs_Buildings/Buildings_RiimbaStation.xml`.
 
-## Building the assembly
+## Building the assemblies
 
 ```sh
 dotnet build Source/RiimbaMod/RiimbaMod.csproj
+dotnet build Source/RiimbaChute/RiimbaChute.csproj -p:PipeSystemDll="<path to>/PipeSystem.dll"
 ```
 
-Output goes to `Riimba/Assemblies/`, which is gitignored.
+Output goes to `Assemblies/` and `Mods/TrashChute/Assemblies/`, both gitignored.
+
+The second is the trash chute, and it is a separate assembly on purpose: it is built on
+Vanilla Expanded Framework's pipe system, and a reference to that from `RiimbaMod` would stop
+the whole mod loading for anyone without the framework. `LoadFolders.xml` loads
+`Mods/TrashChute` only when Vanilla Recycling Expanded and the framework are both active, and
+the chute plugs itself into the main assembly at startup through `RiimbaWasteRouting`.
+`PipeSystem.dll` is not redistributable and not on NuGet; it defaults to the framework's
+Steam Workshop install, and Vanilla Recycling Expanded's own source ships a reference copy
+that works just as well.
 
 The project finds RimWorld's types one of two ways, and picks on its own:
 
@@ -69,6 +81,16 @@ csproj in step with the game version in `About.xml`.
 | `RiimbaStation` (building) | roster of up to 3, adjustable radius, docking bays, waste buffer |
 | `Riimba_Gestate` (recipe) | mech gestator bill - a mechanitor runs it, as with any mech |
 | `RiimbaCleaning` (research) | behind Basic Mechtech and Fabrication |
+| `RiimbaFastChargePad` | facility: +50% charge speed per pad, two per station, more watts while charging |
+| `RiimbaSignalRelay` | facility: +10 tiles on the radius slider's ceiling, one per station |
+| `RiimbaWasteHopper` | facility: storage the station puts its waste into instead of its spot |
+| `RiimbaTrashChute` | pipe carrying trash from stations to a garbage compactor or an outlet |
+| `RiimbaChuteOutlet` | end of a chute that puts trash back out as items, for haulers or belts |
+
+Each unit also has its own allowed area, chosen from the player's areas, which limits the
+messes it takes without limiting where it drives - it can always reach its bay. With room
+priority on, hospitals are cleaned first and kitchens second. Alerts flag a unit that has run
+flat, a unit with no station, and a station that has lost power with units on it.
 
 The drone is a mech so that gestation, pathing, damage, reservations and the cleaning
 job all come for free, but `RiimbaDefPatches` strips `CompOverseerSubject` from its def
@@ -83,6 +105,8 @@ Design notes live next to the code they explain. The art pipeline has its own wr
 
 ## Settings
 
-Waste on/off and amount, charge drain rate (zero for units that never need to dock), and
-whether the station's radius is enforced at all - with it off, units work anywhere they can
-reach and the radius costs no power, since it is no longer holding anything in.
+Waste on/off and amount, where trash goes (the output spot or a linked hopper, or the trash
+chute), charge drain rate (zero for units that never need to dock), whether hospitals and
+kitchens are cleaned first, and whether the station's radius is enforced at all - with it
+off, units work anywhere they can reach and the radius costs no power, since it is no longer
+holding anything in.

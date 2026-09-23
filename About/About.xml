@@ -14,7 +14,9 @@
 
 Gestate Riimba units at a mech gestator like any other light mech - they take steel and components, no subcore of their own. The brain lives in the control station instead, which needs a basic subcore to build. One station drives up to three units within a radius you set on the building - six to thirty tiles - and charges them at its docking bays and takes their collected waste. A wider ring costs sharply more power to hold, because the draw follows the floor area covered rather than the distance.
 
-A working Riimba fills up. Ordinary dirt, ash and sludge pack down into recyclable trash; blood, vomit and other bodily fluids are sealed into wastepacks instead. A unit returns to its station when its bin is full or its charge runs low, and the station puts the waste out on its output spot for a hauler.
+A working Riimba fills up. Ordinary dirt, ash and sludge pack down into recyclable trash; blood, vomit and other bodily fluids are sealed into wastepacks instead. A unit returns to its station when its bin is full or its charge runs low, and the station puts the waste out on its output spot for a hauler - or into a linked waste hopper, or down a trash chute straight into a garbage compactor.
+
+Give each unit its own allowed area, have hospitals and kitchens cleaned first, and extend a station with fast-charge pads and a signal relay. Alerts tell you when a unit has run flat, has no station, or its station has lost power.
 
 Requires Biotech (mech gestator, subcores) and Vanilla Recycling Expanded (trash).</description>
   <modDependencies>

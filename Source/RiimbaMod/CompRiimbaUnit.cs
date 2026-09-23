@@ -70,6 +70,12 @@ namespace RiimbaMod
         private const float ReserveChargeFraction = 0.05f;
 
         private Building_RiimbaStation station;
+
+        // Which of the player's allowed areas this unit cleans in, or null for anywhere its
+        // station reaches. Per unit rather than per station, so three units on one station can
+        // split a base between them - one kept on the hospital, the others on everything else.
+        private Area allowedArea;
+
         private float charge = 1f;
         private float trashLoad;
         private float bioLoad;
@@ -133,6 +139,7 @@ namespace RiimbaMod
         {
             base.PostExposeData();
             Scribe_References.Look(ref station, "station");
+            Scribe_References.Look(ref allowedArea, "allowedArea");
             Scribe_Values.Look(ref charge, "charge", 1f);
             Scribe_Values.Look(ref trashLoad, "trashLoad", 0f);
             Scribe_Values.Look(ref bioLoad, "bioLoad", 0f);
@@ -176,7 +183,7 @@ namespace RiimbaMod
                 drawnHeading, TargetHeading(), Props.turnDegreesPerTick * delta);
 
             if (IsDockedAndCharging)
-                GainCharge(delta, Props.chargeGainPerDayDocked);
+                GainCharge(delta, Props.chargeGainPerDayDocked * station.ChargeSpeed);
             else if (IsOnTrickle)
                 GainCharge(delta, Props.chargeGainPerDayDocked * TrickleRateFraction);
             else
@@ -434,10 +441,52 @@ namespace RiimbaMod
                 face.Draw(centre.WithY(centre.y + Altitudes.AltInc), Rot4.North, parent, heading);
         }
 
+        // A deleted area is not nulled out for us - that notification goes to pawns'
+        // playerSettings, which a Riimba's area does not live in - so check it is still one of
+        // the map's. The alternative is a unit restricted to an area nobody can see or edit.
+        public Area AllowedArea
+        {
+            get
+            {
+                if (allowedArea != null
+                    && (parent.Map == null || !parent.Map.areaManager.AllAreas.Contains(allowedArea)))
+                    allowedArea = null;
+
+                return allowedArea;
+            }
+            set => allowedArea = value;
+        }
+
+        // Only which messes it takes. It still drives anywhere it has to - to its bay, round a
+        // wall - because a unit that could not leave its area to dock would run itself flat.
+        public bool AllowsCell(IntVec3 cell)
+        {
+            Area area = AllowedArea;
+            return area == null || area[cell];
+        }
+
+        public override void PostDrawExtraSelectionOverlays()
+        {
+            base.PostDrawExtraSelectionOverlays();
+
+            // The same highlight a colonist's allowed area gets when it is selected.
+            AllowedArea?.MarkForDraw();
+        }
+
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
             if (!parent.Spawned || parent.Faction != Faction.OfPlayer)
                 yield break;
+
+            Area area = AllowedArea;
+            yield return new Command_RiimbaArea
+            {
+                unit = this,
+                defaultLabel = "Riimba.AreaLabel".Translate(
+                    area == null ? "NoAreaAllowed".Translate().ToString() : area.Label),
+                defaultDesc = "Riimba.AreaDesc".Translate(),
+                icon = RiimbaTextures.SetArea,
+            };
 
             yield return new Command_Action
             {
@@ -503,6 +552,12 @@ namespace RiimbaMod
             {
                 sb.AppendLine();
                 sb.Append("Riimba.UnitBin".Translate(BinFraction.ToStringPercent()));
+            }
+
+            if (AllowedArea != null)
+            {
+                sb.AppendLine();
+                sb.Append("Riimba.UnitArea".Translate(AllowedArea.Label));
             }
 
             sb.AppendLine();

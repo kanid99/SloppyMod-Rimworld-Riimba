@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+
+  <!--
+    The station's end of the chute: a small tank. RiimbaWasteRouting fills it with whole trash
+    items instead of dropping them, and only while the chute it sits on leads to a compactor or an
+    outlet - otherwise the trash goes on the output spot as usual. Ten items is enough to ride out
+    a compactor that is busy, not so much that a blocked chute hides a problem for long.
+  -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="RiimbaStation"]/comps</xpath>
+    <value>
+      <li Class="PipeSystem.CompProperties_ResourceStorage">
+        <pipeNet>RiimbaTrashChuteNet</pipeNet>
+        <storageCapacity>10</storageCapacity>
+        <!-- The station already carries a docking overhang and three bay lamps; a fill bar
+             across it would be one thing too many. The inspect pane shows the level. -->
+        <drawStorageBar>false</drawStorageBar>
+        <addTransferGizmo>false</addTransferGizmo>
+      </li>
+    </value>
+  </Operation>
+
+  <!--
+    The compactor's end: loads trash from the chute into the compactor exactly as a hauler would,
+    and respects its auto-load toggle the same way.
+  -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VRecyclingE_GarbageCompactor"]/comps</xpath>
+    <value>
+      <li Class="RiimbaChute.CompProperties_RiimbaChuteIntake">
+        <pipeNet>RiimbaTrashChuteNet</pipeNet>
+        <thing>VRecyclingE_Trash</thing>
+      </li>
+    </value>
+  </Operation>
+
+</Patch>

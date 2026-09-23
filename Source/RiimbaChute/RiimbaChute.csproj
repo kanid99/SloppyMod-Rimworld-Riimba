@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The optional trash chute. A separate assembly because it is built on Vanilla Expanded
+    Framework's pipe system: referencing that from RiimbaMod itself would make the whole mod fail
+    to load for anyone without the framework. LoadFolders.xml loads Mods/TrashChute, and this
+    assembly with it, only when Vanilla Recycling Expanded and the framework are both active.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>RiimbaChute</RootNamespace>
+    <AssemblyName>RiimbaChute</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>..\..\Mods\TrashChute\Assemblies\</OutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <DebugType>portable</DebugType>
+
+    <!-- Same two ways to find RimWorld as RiimbaMod.csproj; see the notes there. -->
+    <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\RimWorld\RimWorldWin64_Data\Managed</RimWorldManagedDir>
+    <UseLocalRimWorldRefs Condition="'$(UseLocalRimWorldRefs)' == '' And Exists('$(RimWorldManagedDir)\Assembly-CSharp.dll')">true</UseLocalRimWorldRefs>
+    <UseLocalRimWorldRefs Condition="'$(UseLocalRimWorldRefs)' == ''">false</UseLocalRimWorldRefs>
+    <RimWorldRefVersion>1.6.4871</RimWorldRefVersion>
+
+    <!--
+      Vanilla Expanded Framework's PipeSystem.dll. Not redistributable and not on NuGet, so it is
+      found where the framework is installed - Steam Workshop item 2023507013 by default. Point it
+      elsewhere with -p:PipeSystemDll="<path>\PipeSystem.dll". Vanilla Recycling Expanded's own
+      source ships a reference copy under Source/.../References, which works just as well.
+    -->
+    <PipeSystemDll Condition="'$(PipeSystemDll)' == ''">C:\Program Files (x86)\Steam\steamapps\workshop\content\294100\2023507013\1.6\Assemblies\PipeSystem.dll</PipeSystemDll>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseLocalRimWorldRefs)' == 'true'">
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(RimWorldManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(RimWorldManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalRimWorldRefs)' != 'true'">
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="$(RimWorldRefVersion)" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+
+    <Reference Include="PipeSystem">
+      <HintPath>$(PipeSystemDll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!-- Loaded from the mod's root Assemblies folder at run time, so never copied here. -->
+    <ProjectReference Include="..\RiimbaMod\RiimbaMod.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

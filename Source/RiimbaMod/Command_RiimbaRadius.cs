@@ -13,6 +13,11 @@ namespace RiimbaMod
         // button whose picture means something else has to be learned instead of read.
         public static readonly Texture2D SetRadius =
             ContentFinder<Texture2D>.Get("UI/Commands/RiimbaRadius");
+
+        // Vanilla's own allowed-area icon: this command does exactly what that designator's
+        // areas are for, so the picture the player already knows is the right one.
+        public static readonly Texture2D SetArea =
+            ContentFinder<Texture2D>.Get("UI/Designators/AreaAllowedExpand");
     }
 
     // Sets the broadcast radius of every selected station in one go.
@@ -68,8 +73,9 @@ namespace RiimbaMod
 
             stations.Add(((Command_RiimbaRadius)other).station);
 
-            // False: the gizmo that inherited the others is the only one drawn, so the rest must
-            // not also render. This is the same contract vanilla's fuel command signs.
+            // False, so GizmoGridDrawer does not also call ProcessInput on each of the others:
+            // this one already holds every selected station and opens a single slider for all
+            // of them. True would open one slider per station. Same as vanilla's fuel command.
             return false;
         }
     }

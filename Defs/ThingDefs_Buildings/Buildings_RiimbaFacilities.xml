@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    Add-ons for the control station, linked the way a research bench links its tool cabinets:
+    build one near the station and a line shows which station it serves. Each does one job.
+
+      fast-charge pad   more charge speed, and more watts while charging to pay for it
+      signal relay      a higher ceiling on the radius slider, and more watts to hold it
+      waste hopper      a place the station puts its waste instead of the floor
+
+    The pad and relay need power to count - CompFacility.CanBeActive is false for a facility
+    whose power is off - so unpowering one quietly drops the station back to base.
+  -->
+
+  <ThingDef Name="RiimbaFacilityBase" ParentName="BuildingBase" Abstract="True">
+    <category>Building</category>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <pathCost>30</pathCost>
+    <fillPercent>0.3</fillPercent>
+    <rotatable>false</rotatable>
+    <size>(1,1)</size>
+    <designationCategory>Biotech</designationCategory>
+    <constructEffect>ConstructMetal</constructEffect>
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <thingCategories>
+      <li>BuildingsMisc</li>
+    </thingCategories>
+    <researchPrerequisites>
+      <li>RiimbaCleaning</li>
+    </researchPrerequisites>
+    <placeWorkers>
+      <li>PlaceWorker_ShowFacilitiesConnections</li>
+    </placeWorkers>
+  </ThingDef>
+
+  <ThingDef ParentName="RiimbaFacilityBase">
+    <defName>RiimbaFastChargePad</defName>
+    <label>riimba fast-charge pad</label>
+    <description>A booster for a Riimba control station's docking bays. Each linked pad makes docked units charge half again as fast, and the station draws proportionally more power while they do - quicker, not cheaper. Up to two can serve one station. Needs power of its own to work.</description>
+    <graphicData>
+      <texPath>Things/Building/Riimba/RiimbaFastChargePad</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <drawSize>(1,1)</drawSize>
+    </graphicData>
+    <costList>
+      <Steel>40</Steel>
+      <ComponentIndustrial>2</ComponentIndustrial>
+    </costList>
+    <statBases>
+      <MaxHitPoints>80</MaxHitPoints>
+      <WorkToBuild>1400</WorkToBuild>
+      <Mass>12</Mass>
+      <Flammability>0.5</Flammability>
+    </statBases>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>40</basePowerConsumption>
+      </li>
+      <li Class="CompProperties_Flickable" />
+      <li Class="CompProperties_Facility">
+        <maxSimultaneous>2</maxSimultaneous>
+        <maxDistance>6</maxDistance>
+        <statOffsets>
+          <RiimbaChargeSpeed>0.5</RiimbaChargeSpeed>
+        </statOffsets>
+      </li>
+    </comps>
+  </ThingDef>
+
+  <ThingDef ParentName="RiimbaFacilityBase">
+    <defName>RiimbaSignalRelay</defName>
+    <label>riimba signal relay</label>
+    <description>A booster mast for a Riimba control station's broadcast. A linked relay lets the station's command radius be set ten tiles further than it otherwise could - though every extra tile of reach still costs broadcast power by the floor it covers, so the far end of the slider is expensive. One per station. Needs power of its own to work, and it is a radio: it does not need a clear line to the station.</description>
+    <graphicData>
+      <texPath>Things/Building/Riimba/RiimbaSignalRelay</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <drawSize>(1,1)</drawSize>
+    </graphicData>
+    <costList>
+      <Steel>60</Steel>
+      <ComponentIndustrial>3</ComponentIndustrial>
+    </costList>
+    <statBases>
+      <MaxHitPoints>100</MaxHitPoints>
+      <WorkToBuild>1800</WorkToBuild>
+      <Mass>18</Mass>
+      <Flammability>0.4</Flammability>
+    </statBases>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>75</basePowerConsumption>
+      </li>
+      <li Class="CompProperties_Flickable" />
+      <li Class="CompProperties_Facility">
+        <maxSimultaneous>1</maxSimultaneous>
+        <maxDistance>12</maxDistance>
+        <requiresLOS>false</requiresLOS>
+        <statOffsets>
+          <RiimbaRadiusBonus>10</RiimbaRadiusBonus>
+        </statOffsets>
+      </li>
+    </comps>
+  </ThingDef>
+
+  <!--
+    A storage tile rather than a stat. The station puts its waste into a linked hopper instead of
+    onto its output spot, where it is stored rather than scattered - and because it is an ordinary
+    Building_Storage, a hauling zone, a conveyor belt or anything else that takes from storage
+    can take from it. The filter is filled in at startup by RiimbaDefPatches with whichever waste
+    items this install actually has, so it never names a def that is not loaded.
+  -->
+  <ThingDef ParentName="RiimbaFacilityBase">
+    <defName>RiimbaWasteHopper</defName>
+    <label>riimba waste hopper</label>
+    <description>A sealed bin for a Riimba control station's waste. Linked to a station, it takes everything the station would otherwise put out on its output spot - trash and wastepacks alike - and stores it in one place for haulers, or for a conveyor belt to carry away. One per station.</description>
+    <thingClass>Building_Storage</thingClass>
+    <graphicData>
+      <texPath>Things/Building/Riimba/RiimbaWasteHopper</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <drawSize>(1,1)</drawSize>
+    </graphicData>
+    <passability>Standable</passability>
+    <surfaceType>Item</surfaceType>
+    <canOverlapZones>false</canOverlapZones>
+    <costList>
+      <Steel>35</Steel>
+    </costList>
+    <statBases>
+      <MaxHitPoints>100</MaxHitPoints>
+      <WorkToBuild>900</WorkToBuild>
+      <Mass>15</Mass>
+      <Flammability>0.4</Flammability>
+    </statBases>
+    <building>
+      <preventDeteriorationOnTop>true</preventDeteriorationOnTop>
+      <ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
+      <maxItemsInCell>3</maxItemsInCell>
+      <fixedStorageSettings>
+        <filter>
+          <thingDefs />
+        </filter>
+      </fixedStorageSettings>
+      <defaultStorageSettings>
+        <priority>Important</priority>
+        <filter>
+          <thingDefs />
+        </filter>
+      </defaultStorageSettings>
+    </building>
+    <inspectorTabs>
+      <li>ITab_Storage</li>
+    </inspectorTabs>
+    <comps>
+      <li Class="CompProperties_Facility">
+        <maxSimultaneous>1</maxSimultaneous>
+        <maxDistance>6</maxDistance>
+      </li>
+    </comps>
+  </ThingDef>
+
+</Defs>

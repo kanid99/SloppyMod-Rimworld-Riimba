@@ -48,7 +48,39 @@ namespace RiimbaMod
 
         public float MinRadius => Extension.minRadius;
 
-        public float MaxRadius => Mathf.Max(Extension.minRadius, Extension.maxRadius);
+        // A linked signal relay raises the ceiling; the floor never moves.
+        public float MaxRadius => Mathf.Max(Extension.minRadius, Extension.maxRadius + RadiusBonus);
+
+        // Both read as stats, which is how vanilla facilities feed a building: CompFacility
+        // statOffsets land on it through CompAffectedByFacilities.GetStatOffset, and the stat's
+        // own explanation lists which facility contributed what, for free.
+        public float RadiusBonus => Mathf.Max(0f, this.GetStatValue(RiimbaDefOf.RiimbaRadiusBonus));
+
+        public float ChargeSpeed => Mathf.Max(0.1f, this.GetStatValue(RiimbaDefOf.RiimbaChargeSpeed));
+
+        // The first active hopper linked to this station, if any. Only spawned, active ones: a
+        // hopper that has been uninstalled is still briefly in the link list, and dropping waste
+        // at the position of something in a crate would put it on the floor where it used to be.
+        public Thing LinkedHopper
+        {
+            get
+            {
+                CompAffectedByFacilities facilities = GetComp<CompAffectedByFacilities>();
+                if (facilities == null)
+                    return null;
+
+                List<Thing> linked = facilities.LinkedFacilitiesListForReading;
+                for (int i = 0; i < linked.Count; i++)
+                {
+                    Thing facility = linked[i];
+                    if (facility.def == RiimbaDefOf.RiimbaWasteHopper && facility.Spawned
+                        && facilities.IsFacilityActive(facility))
+                        return facility;
+                }
+
+                return null;
+            }
+        }
 
         // Clamped on the way out rather than only on the way in, so a save written when the def
         // allowed a bigger ring - a settings change, a mod update - comes back inside the range
@@ -226,9 +258,11 @@ namespace RiimbaMod
                 }
             }
 
+            // Charge speed scales the draw with it. A fast-charge pad makes charging quicker, not
+            // cheaper: the same energy goes into the unit, in less time, at more watts.
             Power.PowerOutput = -(Power.Props.PowerConsumption
                 + PowerForRadius(Radius)
-                + charging * Extension.powerPerChargingUnit);
+                + charging * Extension.powerPerChargingUnit * ChargeSpeed);
         }
 
         // The overhang, drawn a second time above pawn altitude so a unit reversing into a bay

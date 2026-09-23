@@ -31,6 +31,7 @@ namespace RiimbaMod
 
             StripOverseerSubject();
             EnsureStationDrawsRealtime();
+            FillHopperFilter();
 
             if (Prefs.DevMode && missing.Count > 0)
             {
@@ -78,6 +79,41 @@ namespace RiimbaMod
             station.drawerType = DrawerType.MapMeshAndRealTime;
             Log.Warning("[Riimba] RiimbaStation was MapMeshOnly, which stops its docking overhang "
                 + "drawing at all; forced to MapMeshAndRealTime.");
+        }
+
+        // The hopper stores exactly what the station puts out, resolved the same way the station
+        // resolves it - so with Vanilla Recycling Expanded it takes trash and wastepacks, and
+        // without it just wastepacks, and the XML never names a def this install lacks.
+        private static void FillHopperFilter()
+        {
+            ThingDef hopper = DefDatabase<ThingDef>.GetNamedSilentFail("RiimbaWasteHopper");
+            CompProperties_RiimbaWasteBuffer waste = DefDatabase<ThingDef>
+                .GetNamedSilentFail("RiimbaStation")?.GetCompProperties<CompProperties_RiimbaWasteBuffer>();
+
+            if (hopper?.building == null || waste == null)
+                return;
+
+            ThingDef[] wasteDefs =
+            {
+                CompRiimbaWasteBuffer.ResolveDef(waste.trashWasteDefNames, waste.trashWasteLabel),
+                CompRiimbaWasteBuffer.ResolveDef(waste.bioWasteDefNames, waste.bioWasteLabel),
+            };
+
+            foreach (StorageSettings settings in new[] { hopper.building.fixedStorageSettings, hopper.building.defaultStorageSettings })
+            {
+                if (settings?.filter == null)
+                    continue;
+
+                foreach (ThingDef def in wasteDefs)
+                {
+                    if (def != null)
+                        settings.filter.SetAllow(def, true);
+                }
+
+                // The storage tab draws its tree from this, and it was worked out back when the
+                // filter was empty; without recalculating, the tab would show nothing to toggle.
+                settings.filter.RecalculateDisplayRootCategory();
+            }
         }
 
         private static void AddPrerequisites(string projectName, List<string> missing, params string[] candidates)

@@ -175,17 +175,22 @@ namespace RiimbaMod
             if (filthInHome.Count == 0)
                 return null;
 
+            // "Nearest" is nearest within the most urgent room tier that has anything in it. With
+            // room priority off every mess is tier 0 and this is plain nearest-first.
             Filth nearest = null;
+            int nearestTier = int.MaxValue;
             float nearestDistance = float.MaxValue;
 
             for (int i = 0; i < filthInHome.Count; i++)
             {
-                if (!(filthInHome[i] is Filth filth) || !IsValidTarget(pawn, station, filth))
+                if (!(filthInHome[i] is Filth filth) || !IsValidTarget(pawn, comp, station, filth))
                     continue;
 
+                int tier = RoomTier(filth);
                 float distance = pawn.Position.DistanceToSquared(filth.Position);
-                if (distance < nearestDistance)
+                if (tier < nearestTier || (tier == nearestTier && distance < nearestDistance))
                 {
+                    nearestTier = tier;
                     nearestDistance = distance;
                     nearest = filth;
                 }
@@ -206,12 +211,21 @@ namespace RiimbaMod
                 if (!(filthInHome[i] is Filth filth) || filth == nearest)
                     continue;
 
-                if (IsValidTarget(pawn, station, filth))
+                if (IsValidTarget(pawn, comp, station, filth))
                     extras.Add(filth);
             }
 
-            extras.Sort((a, b) => a.Position.DistanceToSquared(nearest.Position)
-                .CompareTo(b.Position.DistanceToSquared(nearest.Position)));
+            // Tier first, so a queue started in the hospital finishes the hospital before it
+            // wanders into the corridor outside, however close the corridor is.
+            extras.Sort((a, b) =>
+            {
+                int byTier = RoomTier(a).CompareTo(RoomTier(b));
+                if (byTier != 0)
+                    return byTier;
+
+                return a.Position.DistanceToSquared(nearest.Position)
+                    .CompareTo(b.Position.DistanceToSquared(nearest.Position));
+            });
 
             for (int i = 0; i < extras.Count && job.GetTargetQueue(TargetIndex.A).Count < MaxQueued; i++)
                 job.AddQueuedTarget(TargetIndex.A, extras[i]);
@@ -219,12 +233,44 @@ namespace RiimbaMod
             return job;
         }
 
-        private static bool IsValidTarget(Pawn pawn, Building_RiimbaStation station, Filth filth)
+        private static RoomRoleDef kitchenRole;
+        private static bool kitchenRoleResolved;
+
+        // Hospital, then kitchen, then everything else - the two rooms where dirt does real harm.
+        // Kitchen is looked up by name because vanilla's RoomRoleDefOf has no field for it.
+        private static int RoomTier(Filth filth)
+        {
+            if (!RiimbaModMain.Settings.prioritizeRooms)
+                return 0;
+
+            if (!kitchenRoleResolved)
+            {
+                kitchenRoleResolved = true;
+                kitchenRole = DefDatabase<RoomRoleDef>.GetNamedSilentFail("Kitchen");
+            }
+
+            RoomRoleDef role = filth.GetRoom()?.Role;
+            if (role == null)
+                return 2;
+
+            if (role == RoomRoleDefOf.Hospital)
+                return 0;
+
+            if (role == kitchenRole)
+                return 1;
+
+            return 2;
+        }
+
+        private static bool IsValidTarget(Pawn pawn, CompRiimbaUnit comp, Building_RiimbaStation station, Filth filth)
         {
             if (filth == null || !filth.Spawned || filth.Destroyed)
                 return false;
 
             if (!station.InRadius(filth.Position))
+                return false;
+
+            if (!comp.AllowsCell(filth.Position))
                 return false;
 
             if (filth.TicksSinceThickened < RiimbaAI.MinTicksSinceThickened)

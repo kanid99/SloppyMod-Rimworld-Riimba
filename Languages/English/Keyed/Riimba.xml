@@ -13,6 +13,9 @@
   <Riimba.AssignStationDesc>Pick which control station commands this unit. It will drive there and sign on, taking one of that station's slots.</Riimba.AssignStationDesc>
   <Riimba.SignOffLabel>Sign off</Riimba.SignOffLabel>
   <Riimba.SignOffDesc>Release this unit from its station, freeing the slot. It will stop cleaning and look for another station to sign on to.</Riimba.SignOffDesc>
+  <Riimba.AreaLabel>Area: {0}</Riimba.AreaLabel>
+  <Riimba.AreaDesc>Choose which of your allowed areas this unit cleans in. It only limits which messes it takes: it still drives wherever it must to reach its station and dock.\n\nApplies to every selected unit that shows the same area.</Riimba.AreaDesc>
+  <Riimba.UnitArea>Cleans in: {0}</Riimba.UnitArea>
   <Riimba.StationFull>{0} already has all {1} of its slots filled. Sign a unit off it first.</Riimba.StationFull>
 
   <!-- Station inspect pane -->
@@ -32,5 +35,13 @@
   <Riimba.WasteBacklog>Waste backed up - clear the output spot. Units cannot unload until it drains.</Riimba.WasteBacklog>
   <Riimba.DumpWasteLabel>Dump waste</Riimba.DumpWasteLabel>
   <Riimba.DumpWasteDesc>Put the part-filled waste out now instead of waiting for it to reach a whole item. Rounds up and deducts the full amount, so dumping early is borrowed against later cleaning rather than free.</Riimba.DumpWasteDesc>
+
+  <!-- Alerts -->
+  <Riimba.AlertFlatLabel>Riimba out of charge</Riimba.AlertFlatLabel>
+  <Riimba.AlertFlatDesc>These units have run completely flat and stopped where they are. A powered control station trickle-charges its own flat units wherever they are, slowly - most of an hour to get moving again.\n\nIf this keeps happening, check that each unit can still reach its docking bay, or shorten the distance by moving the station or narrowing its radius.</Riimba.AlertFlatDesc>
+  <Riimba.AlertNoStationLabel>Riimba without a station</Riimba.AlertNoStationLabel>
+  <Riimba.AlertNoStationDesc>These units are not signed on to a control station, so they are not cleaning. Each station commands up to three.\n\nBuild a Riimba control station, or free a slot on one and use Assign station on the unit.</Riimba.AlertNoStationDesc>
+  <Riimba.AlertUnpoweredLabel>Riimba station unpowered</Riimba.AlertUnpoweredLabel>
+  <Riimba.AlertUnpoweredDesc>These control stations have lost power. Every unit signed on to them is parked until it comes back, and nothing on them is charging.</Riimba.AlertUnpoweredDesc>
 
 </LanguageData>
