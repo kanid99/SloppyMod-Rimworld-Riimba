@@ -23,16 +23,24 @@
     </resource>
     <pipeDefs>
       <li>RiimbaTrashChute</li>
+      <li>RiimbaTrashChuteHidden</li>
     </pipeDefs>
     <overlayOptions>
       <overlayColor>(0.62, 0.53, 0.36)</overlayColor>
     </overlayOptions>
+    <!-- A deconstruct tool that touches only chutes, and shows the chute overlay while it is
+         held. It matters more than it would for visible pipe: a buried chute cannot be clicked
+         on, so this is how one is found and taken up. -->
+    <designator>
+      <deconstructIconPath>UI/Designators/Deconstruct</deconstructIconPath>
+      <designationCategoryDef>Biotech</designationCategoryDef>
+    </designator>
   </PipeSystem.PipeNetDef>
 
   <ThingDef ParentName="BuildingBase">
     <defName>RiimbaTrashChute</defName>
     <label>trash chute</label>
-    <description>A sealed duct that carries trash between Riimba control stations, garbage compactors and trash chute outlets. Lay it touching a station to take the station's trash away automatically, and run it to a garbage compactor to have the compactor loaded without a hauler, or to a chute outlet to have the trash come out somewhere else.\n\nOnly used when the Riimba mod settings send trash to the chute. Wastepacks never go down it.</description>
+    <description>A sealed duct that carries trash between Riimba control stations, garbage compactors and trash chute outlets. Lay it touching a station to take the station's trash away automatically, and run it to a garbage compactor to have the compactor loaded without a hauler, or to a chute outlet to have the trash come out somewhere else.\n\nIt can run under walls, which hide it. To hide it under a floor, use the buried trash chute instead.\n\nOnly used when the Riimba mod settings send trash to the chute. Wastepacks never go down it.</description>
     <thingClass>PipeSystem.Building_Pipe</thingClass>
     <category>Building</category>
     <graphicData>
@@ -70,6 +78,70 @@
     <rotatable>false</rotatable>
     <selectable>true</selectable>
     <neverMultiSelect>true</neverMultiSelect>
+    <clearBuildingArea>false</clearBuildingArea>
+    <leaveResourcesWhenKilled>false</leaveResourcesWhenKilled>
+    <constructEffect>ConstructMetal</constructEffect>
+    <designationCategory>Biotech</designationCategory>
+    <researchPrerequisites>
+      <li>RiimbaCleaning</li>
+    </researchPrerequisites>
+    <comps>
+      <li Class="PipeSystem.CompProperties_Resource">
+        <pipeNet>RiimbaTrashChuteNet</pipeNet>
+      </li>
+    </comps>
+    <placeWorkers>
+      <li>PipeSystem.PlaceWorker_Pipe</li>
+    </placeWorkers>
+  </ThingDef>
+
+  <!--
+    The same chute, laid under the floor. Draws nothing once built (Building_HiddenChute), is not
+    selectable - clicking what looks like bare floor should not select a pipe - and is found with
+    the chute overlay and taken up with the chute deconstruct tool. The price of not seeing it is
+    paid in steel and in build time, and it drops the visible chute's beauty penalty, which is the
+    point of burying it.
+  -->
+  <ThingDef ParentName="BuildingBase">
+    <defName>RiimbaTrashChuteHidden</defName>
+    <label>buried trash chute</label>
+    <description>A trash chute laid under the floor. It joins up with ordinary trash chute and does the same job, but it cannot be seen once built, so it does not spoil a room's beauty. It costs more and takes longer to lay.\n\nBuried chute cannot be clicked on. Open the trash chute overlay to see where it runs, and use the trash chute deconstruct tool to take it up.</description>
+    <thingClass>RiimbaChute.Building_HiddenChute</thingClass>
+    <category>Building</category>
+    <graphicData>
+      <!-- Never drawn once built, but the blueprint and frame are made from it, and the
+           framework builds its linked pipe graphic from this path for every pipe def. -->
+      <texPath>Things/Building/Riimba/Chute/RiimbaTrashChute_Atlas</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <linkType>Basic</linkType>
+      <linkFlags>
+        <li>Custom8</li>
+      </linkFlags>
+    </graphicData>
+    <uiIconPath>Things/Building/Riimba/Chute/RiimbaTrashChuteHidden_MenuIcon</uiIconPath>
+    <altitudeLayer>Conduits</altitudeLayer>
+    <passability>Standable</passability>
+    <drawerType>MapMeshOnly</drawerType>
+    <!-- Scratches and cracked corners are printed by a separate section layer, straight from
+         hit points, whether or not the building draws itself. -->
+    <drawDamagedOverlay>false</drawDamagedOverlay>
+    <selectable>false</selectable>
+    <building>
+      <isInert>true</isInert>
+      <isEdifice>false</isEdifice>
+      <ai_chillDestination>false</ai_chillDestination>
+    </building>
+    <statBases>
+      <MaxHitPoints>80</MaxHitPoints>
+      <WorkToBuild>180</WorkToBuild>
+      <Flammability>0</Flammability>
+      <Beauty>0</Beauty>
+    </statBases>
+    <costList>
+      <Steel>4</Steel>
+    </costList>
+    <placingDraggableDimensions>1</placingDraggableDimensions>
+    <rotatable>false</rotatable>
     <clearBuildingArea>false</clearBuildingArea>
     <leaveResourcesWhenKilled>false</leaveResourcesWhenKilled>
     <constructEffect>ConstructMetal</constructEffect>

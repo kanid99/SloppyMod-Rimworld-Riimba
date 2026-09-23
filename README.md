@@ -85,6 +85,7 @@ csproj in step with the game version in `About.xml`.
 | `RiimbaSignalRelay` | facility: +10 tiles on the radius slider's ceiling, one per station |
 | `RiimbaWasteHopper` | facility: storage the station puts its waste into instead of its spot |
 | `RiimbaTrashChute` | pipe carrying trash from stations to a garbage compactor or an outlet |
+| `RiimbaTrashChuteHidden` | the same chute laid under the floor: invisible once built, shown in the chute overlay, dearer and slower to lay |
 | `RiimbaChuteOutlet` | end of a chute that puts trash back out as items, for haulers or belts |
 
 Each unit also has its own allowed area, chosen from the player's areas, which limits the

@@ -71,6 +71,22 @@ namespace RiimbaChute
         }
     }
 
+    // A chute run under the floor: the same pipe on the same network, that prints nothing onto
+    // the map. Only the finished building hides - its blueprint and frame are generated from the
+    // def's graphic data and still show while it is being laid.
+    //
+    // It still appears wherever the network is drawn rather than the building: the chute overlay
+    // comes from SectionLayer_Resource, which prints each connector's CompResource, not the thing
+    // itself, so a buried run shows up the moment the player looks for it. Visible chute next to
+    // a buried one needs nothing either: its own arm reaches the shared edge and stops there,
+    // which reads as the duct going down through the floor.
+    public class Building_HiddenChute : Building_Pipe
+    {
+        public override void Print(SectionLayer layer)
+        {
+        }
+    }
+
     public class CompProperties_RiimbaChuteIntake : CompProperties_Resource
     {
         // The item the network's resource becomes when it is loaded - one unit, one item.

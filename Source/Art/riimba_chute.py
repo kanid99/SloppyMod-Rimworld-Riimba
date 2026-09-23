@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draws the trash chute: the linked pipe atlas, its menu icon, and the chute outlet.
+"""Draws the trash chute: the linked pipe atlas, the menu icons, and the chute outlet.
 
 The atlas is the part that can be quietly wrong. A linked graphic is sixteen tiles in a 4x4
 grid, one per combination of neighbours, and RimWorld picks a tile by bitmask:
@@ -105,6 +105,40 @@ def menu_icon():
     return finish(image, size, size)
 
 
+def hidden_menu_icon():
+    """The buried chute's menu icon: floor plates, with the duct beneath them shown only as a
+    dashed outline - the same run as the ordinary icon, so the two read as a pair, but plainly
+    under something rather than on it. It is the only picture the buried chute ever has."""
+    size = TILE
+    image, draw = new_canvas(size, size)
+
+    # Four floor plates with seams between them.
+    gap = 4
+    half = size / 2
+    for x0, y0 in ((0, 0), (half, 0), (0, half), (half, half)):
+        rect(draw, (x0 + gap / 2, y0 + gap / 2, x0 + half - gap / 2, y0 + half - gap / 2),
+             fill=CASE_DARK, radius=4)
+        rect(draw, (x0 + gap / 2 + 3, y0 + gap / 2 + 3, x0 + half - gap / 2 - 3,
+                    y0 + half * 0.45), fill=CASE, radius=3)
+
+    # The duct's edges as dashes, then the fitting as an outline only.
+    top, bottom = half - HALF_WIDTH, half + HALF_WIDTH
+    dash, space = 12, 8
+    x = 4
+    while x < size - 4:
+        end = min(x + dash, size - 4)
+        for y in (top, bottom):
+            rect(draw, (x, y - 2, end, y + 2), fill=CASE_LIT)
+        x = end + space
+
+    fitting = HALF_WIDTH + 5
+    rect(draw, (half - fitting, half - fitting, half + fitting, half + fitting),
+         outline=CASE_LIT, width=3, radius=5)
+    ellipse(draw, (half - 5, half - 1, half + 5, half + 9), fill=CONTACT)
+
+    return finish(image, size, size)
+
+
 def outlet():
     size = 192
     m = 16
@@ -162,6 +196,7 @@ def main():
     outputs = {
         "RiimbaTrashChute_Atlas": image,
         "RiimbaTrashChute_MenuIcon": menu_icon(),
+        "RiimbaTrashChuteHidden_MenuIcon": hidden_menu_icon(),
         "RiimbaChuteOutlet": outlet(),
     }
     for name, picture in outputs.items():
