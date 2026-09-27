@@ -111,3 +111,11 @@ chute), charge drain rate (zero for units that never need to dock), whether hosp
 kitchens are cleaned first, and whether the station's radius is enforced at all - with it
 off, units work anywhere they can reach and the radius costs no power, since it is no longer
 holding anything in.
+
+## Licence
+
+Public domain, under [CC0 1.0](LICENSE). That covers everything here - code,
+textures, sounds and text. Copy it, change it, make your own version, fold it
+into another mod or re-upload it: no permission or credit needed.
+
+RimWorld belongs to Ludeon Studios, and nothing of theirs is included here.
