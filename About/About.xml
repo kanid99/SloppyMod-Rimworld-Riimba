@@ -3,6 +3,7 @@
   <name>SloppyMods Riimba</name>
   <author>SloppyMod</author>
   <packageId>sloppymod.riimba</packageId>
+  <modVersion>0.9.15</modVersion>
   <!-- 1.6 only, for the same reason as the mending mod: the assembly is built against 1.6
        signatures (Thing.Tick and Thing.DrawAt are protected there and were public in 1.4/1.5),
        so it cannot load on earlier versions. Listing them would give those players a mod that
@@ -10,7 +11,9 @@
   <supportedVersions>
     <li>1.6</li>
   </supportedVersions>
-  <description>Riimba is a semi-autonomous cleaning drone. It is not an independent mechanoid: it is a dumb chassis driven by a control station, and it only works inside that station's broadcast radius.
+  <description>Build 0.9.15
+
+Riimba is a semi-autonomous cleaning drone. It is not an independent mechanoid: it is a dumb chassis driven by a control station, and it only works inside that station's broadcast radius.
 
 Gestate Riimba units at a mech gestator like any other light mech - they take steel and components, no subcore of their own. The brain lives in the control station instead, which needs a basic subcore to build. One station drives up to three units within a radius you set on the building - six to thirty tiles - and charges them at its docking bays and takes their collected waste. A wider ring costs sharply more power to hold, because the draw follows the floor area covered rather than the distance.
 
