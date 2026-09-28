@@ -109,6 +109,9 @@ When the bin fills or the charge runs low it drives itself back to a docking bay
         <brushTexPath>Things/Pawn/Riimba/RiimbaBrush</brushTexPath>
         <bodyDrawSize>1.1</bodyDrawSize>
         <turnDegreesPerTick>6.0</turnDegreesPerTick>
+        <!-- Legs turning further than this stop the unit to pivot in place before it drives
+             off; smaller ones it steers through on the move. See CompProperties_RiimbaUnit. -->
+        <pivotAngle>50</pivotAngle>
         <brushAlong>0.198</brushAlong>
         <brushOut>0.3841</brushOut>
         <brushDrawSize>0.275</brushDrawSize>

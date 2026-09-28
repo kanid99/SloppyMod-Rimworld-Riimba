@@ -3,6 +3,7 @@ using System.Text;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.AI;
 
 namespace RiimbaMod
 {
@@ -40,6 +41,21 @@ namespace RiimbaMod
         // half a second: quick enough not to look sluggish, slow enough to read as a turn
         // rather than a snap.
         public float turnDegreesPerTick = 6f;
+
+        // A new leg of the path that turns further than this from where the machine is pointing
+        // makes it stop and pivot in place before it drives off. Anything smaller it steers
+        // through on the move. 50 sits just above the 45-degree steps a diagonal path is made of,
+        // so a unit crossing a room at an angle glides rather than stopping at every cell.
+        public float pivotAngle = 50f;
+
+        // Close enough to call the pivot done and let it go.
+        public float pivotSettleAngle = 6f;
+
+        // Under way, the machine aims this many path cells ahead rather than at the very next
+        // one, which is what smooths a zigzag into a line - but never more than steerAngle off
+        // the leg it is actually driving, or it would visibly crab sideways into a corner.
+        public int lookAheadCells = 2;
+        public float steerAngle = 25f;
         public float brushAlong = 0.198f;
         public float brushOut = 0.3841f;
         public float brushDrawSize = 0.275f;
@@ -97,6 +113,15 @@ namespace RiimbaMod
         // Set by JobDriver_RiimbaDock while the unit is lining up and backing into its bay, when
         // the heading must point AWAY from the station rather than along the direction of travel.
         public bool reverseHeading;
+
+        // Holding at the start of a leg while the machine swings round to face it. Not saved:
+        // a reload mid-pivot just re-decides on the next tick from the saved heading.
+        private bool pivoting;
+        private int pivotTicks;
+
+        // A pivot never lasts longer than a full reversal takes plus slack, whatever happens -
+        // if something ever stopped the heading converging, the unit must not be frozen for good.
+        private int MaxPivotTicks => Mathf.CeilToInt(180f / Mathf.Max(0.5f, Props.turnDegreesPerTick)) + 20;
 
         private Graphic underGraphic;
         private Graphic faceGraphic;
@@ -177,17 +202,89 @@ namespace RiimbaMod
             if (IsBrushSpinning)
                 brushAngle = (brushAngle + Props.brushDegreesPerTick * delta) % 360f;
 
-            // MoveTowardsAngle rather than a plain lerp: it takes the short way round, so a
-            // reversal turns through 180 degrees instead of winding the long way past 359.
-            drawnHeading = Mathf.MoveTowardsAngle(
-                drawnHeading, TargetHeading(), Props.turnDegreesPerTick * delta);
-
             if (IsDockedAndCharging)
                 GainCharge(delta, Props.chargeGainPerDayDocked * station.ChargeSpeed);
             else if (IsOnTrickle)
                 GainCharge(delta, Props.chargeGainPerDayDocked * TrickleRateFraction);
             else
                 DrainCharge(delta);
+        }
+
+        // Every tick, not CompTickInterval: this has to run before the pather moves the pawn on
+        // this same tick, and ThingWithComps ticks comps before Pawn.Tick reaches PatherTick.
+        // It is also what the heading is eased on, so a turn is as smooth as the movement.
+        public override void CompTick()
+        {
+            base.CompTick();
+
+            if (!parent.Spawned)
+                return;
+
+            // MoveTowardsAngle rather than a plain lerp: it takes the short way round, so a
+            // reversal turns through 180 degrees instead of winding the long way past 359.
+            drawnHeading = Mathf.MoveTowardsAngle(drawnHeading, TargetHeading(), Props.turnDegreesPerTick);
+
+            HoldForPivot();
+        }
+
+        // Rotate first, then drive. RimWorld moves a pawn along its path whatever way it is drawn
+        // facing, so easing the drawn heading alone gives a machine that slides off sideways and
+        // finishes turning on the way. This holds the pawn at the start of a leg until it faces
+        // that leg.
+        //
+        // The hold works through the pather's own progress counter. When a leg starts, the pather
+        // sets nextCellCostLeft to the leg's full cost and then pays it down a little each tick;
+        // the pawn is drawn at 1 - left/total of the way along. Topping it back up to full, plus
+        // exactly the amount PatherTick is about to take off, leaves the pawn standing on the
+        // corner cell - no creep, no drift - while its heading swings round. Nothing is patched:
+        // both fields are public, and letting go is just not topping it up any more.
+        private void HoldForPivot()
+        {
+            Pawn_PathFollower pather = Unit.pather;
+            if (pather == null || !pather.Moving || pather.nextCellCostTotal <= 0f)
+            {
+                pivoting = false;
+                return;
+            }
+
+            // Only ever at the very start of a leg. A leg already under way is finished as it is:
+            // freezing a unit halfway between two cells looks far worse than a late turn.
+            bool atLegStart = pather.nextCellCostLeft >= pather.nextCellCostTotal - 0.001f;
+            if (!atLegStart)
+            {
+                pivoting = false;
+                return;
+            }
+
+            float offBy = Mathf.Abs(Mathf.DeltaAngle(drawnHeading, TravelHeading(pather)));
+
+            // Hysteresis: start pivoting on a big turn, keep pivoting until nearly lined up.
+            bool hold = pivoting ? offBy > Props.pivotSettleAngle : offBy > Props.pivotAngle;
+            if (hold && pivotTicks >= MaxPivotTicks)
+                hold = false;
+
+            if (!hold)
+            {
+                pivoting = false;
+                pivotTicks = 0;
+                return;
+            }
+
+            pivoting = true;
+            pivotTicks++;
+
+            // PatherTick's own per-tick payment, less the stagger and flight factors a Riimba
+            // never has; if it were ever staggered it would pay less, and the pawn would sit a
+            // hair short of the corner rather than past it, which is harmless.
+            pather.nextCellCostLeft = pather.nextCellCostTotal
+                + Mathf.Max(1f, pather.nextCellCostTotal / 450f);
+        }
+
+        // The way the pawn is actually about to travel, as a heading the machine should face.
+        // Backing into a bay it travels tail-first, so the heading it should hold is the reverse.
+        private float TravelHeading(Pawn_PathFollower pather)
+        {
+            return reverseHeading ? pather.lastMoveDirection + 180f : pather.lastMoveDirection;
         }
 
         private bool IsDockedAndCharging => station != null
@@ -356,13 +453,39 @@ namespace RiimbaMod
                 return station.Rotation.FacingCell.ToVector3().AngleFlat();
 
             // lastMoveDirection is set by the pather to (nextCell - lastCell).AngleFlat every
-            // time a step begins, which is exactly the heading wanted while under way.
+            // time a step begins. While pivoting, that leg is the target and nothing else.
+            // Otherwise aim a little further down the path, clamped close to the leg itself.
             Pawn unit = Unit;
             if (unit.pather != null && unit.pather.Moving)
-                return unit.pather.lastMoveDirection;
+            {
+                float leg = unit.pather.lastMoveDirection;
+                if (pivoting)
+                    return leg;
+
+                return SteerHeading(unit, leg);
+            }
 
             // Standing still: hold whatever we are pointing at rather than drifting to north.
             return drawnHeading;
+        }
+
+        // A path that alternates east and north-east cell by cell has a leg direction that flips
+        // 45 degrees every step; chasing that makes the machine wobble. The direction to a cell a
+        // couple of steps ahead averages the zigzag into the line the path really follows.
+        private float SteerHeading(Pawn unit, float leg)
+        {
+            PawnPath path = unit.pather.curPath;
+            if (path == null || !path.Found || path.NodesLeftCount <= 1)
+                return leg;
+
+            int ahead = Mathf.Min(Props.lookAheadCells, path.NodesLeftCount - 1);
+            IntVec3 aim = path.Peek(ahead);
+            if (aim == unit.Position)
+                return leg;
+
+            float towardAim = (aim - unit.Position).AngleFlat;
+            float offLeg = Mathf.Clamp(Mathf.DeltaAngle(leg, towardAim), -Props.steerAngle, Props.steerAngle);
+            return leg + offLeg;
         }
 
         // Within a few degrees of where it wants to point. Deliberately not an exact match:
