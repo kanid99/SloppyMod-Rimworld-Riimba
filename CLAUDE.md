@@ -31,6 +31,13 @@ commit pushed to `main` is what the game loads next**.
   deliberate; `Source/`, `Tools/`, docs and images are ignored by the game.
 - A zip for the Steam Workshop or manual testing still comes from
   `bash Tools/package.sh` (shared tooling) when asked.
+- **Publish a GitHub Release for every build.** RimSort's GitHub Mods panel
+  reads "Latest Version" from the newest release's tag and installs that
+  release's single `.zip` asset; with no releases it shows only `HEAD` and a
+  blank version. Once `Tools/` (shared tooling) and the committed DLLs are on
+  this branch, copy `.github/workflows/release.yml` from
+  kanid99/Sloppymod-Rimworld-EntertainMe: on each push it checks the stamp,
+  packages with `Tools/package.sh` and publishes `v<modVersion>` with the zip.
 - `LoadFolders.xml` loads `Mods/TrashChute` only when Vanilla Expanded Framework and Vanilla Recycling Expanded are both active; its assembly must be committed too.
 
 ## Standing preferences
