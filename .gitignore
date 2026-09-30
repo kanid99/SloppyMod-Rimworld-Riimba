@@ -1,6 +1,11 @@
 dist/
 obj/
 bin/
-Assemblies/
+# Build output, except the assemblies RimWorld loads: RimSort clones this repo
+# straight into the Mods folder, so a clone must carry the DLLs (see CLAUDE.md).
+Assemblies/*
+!Assemblies/RiimbaMod.dll
+Mods/TrashChute/Assemblies/*
+!Mods/TrashChute/Assemblies/RiimbaChute.dll
 *.user
 __pycache__/
