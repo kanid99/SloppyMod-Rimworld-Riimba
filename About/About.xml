@@ -3,7 +3,7 @@
   <name>SloppyMods Riimba</name>
   <author>SloppyMod</author>
   <packageId>sloppymod.riimba</packageId>
-  <modVersion>0.9.19</modVersion>
+  <modVersion>0.9.20</modVersion>
   <!-- 1.6 only, for the same reason as the mending mod: the assembly is built against 1.6
        signatures (Thing.Tick and Thing.DrawAt are protected there and were public in 1.4/1.5),
        so it cannot load on earlier versions. Listing them would give those players a mod that
@@ -11,7 +11,7 @@
   <supportedVersions>
     <li>1.6</li>
   </supportedVersions>
-  <description>Build 0.9.19
+  <description>Build 0.9.20
 
 Riimba is a semi-autonomous cleaning drone. It is not an independent mechanoid: it is a dumb chassis driven by a control station, and it only works inside that station's broadcast radius.
 
