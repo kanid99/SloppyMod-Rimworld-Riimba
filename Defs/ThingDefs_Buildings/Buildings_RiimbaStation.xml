@@ -60,6 +60,10 @@ Needs power to command and to charge. Cut the power and every unit signed on to 
     <!-- Uninstall and reinstall without losing the team: Building_RiimbaStation.DeSpawn hands
          its units back rather than stranding them bound to a building in a crate. -->
     <minifiedDef>MinifiedThing</minifiedDef>
+    <!-- Required of anything minifiable, so the crated station has a place in stockpile filters. -->
+    <thingCategories>
+      <li>BuildingsMisc</li>
+    </thingCategories>
     <constructionSkillPrerequisite>6</constructionSkillPrerequisite>
     <!-- Draws the broadcast radius and the docking bays while the building is still on the
          cursor, so its orientation and reach can be judged before it is committed. -->

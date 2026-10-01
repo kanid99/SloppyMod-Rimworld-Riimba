@@ -21,7 +21,6 @@
     <solid>true</solid>
     <alive>false</alive>
     <bleedRate>0</bleedRate>
-    <!-- Nothing on this pawn can be frostbitten; leaving the vanilla default of 0 says so. -->
   </BodyPartDef>
 
   <BodyPartDef>
@@ -60,6 +59,11 @@
     <solid>true</solid>
     <alive>false</alive>
     <bleedRate>0</bleedRate>
+    <!-- BodyDef.ConfigErrors rejects any body with no part above zero here ("no parts vulnerable
+         to frostbite"), so one part has to carry it. The wheels, being the exposed extremities.
+         It changes nothing in play: frostbite comes from the hypothermia hediff giver, which
+         mechanoid races do not have. -->
+    <frostbiteVulnerability>0.5</frostbiteVulnerability>
     <!-- Two of these, so losing one halves movement rather than stopping the unit. Mirrored is
          what makes the game label them "left drive wheel" and "right drive wheel" rather than
          printing the same name twice. -->

@@ -74,7 +74,7 @@
     <costList>
       <Steel>2</Steel>
     </costList>
-    <placingDraggableDimensions>1</placingDraggableDimensions>
+    <drawStyleCategory>Riimba_ChuteLines</drawStyleCategory>
     <rotatable>false</rotatable>
     <selectable>true</selectable>
     <neverMultiSelect>true</neverMultiSelect>
@@ -140,7 +140,7 @@
     <costList>
       <Steel>4</Steel>
     </costList>
-    <placingDraggableDimensions>1</placingDraggableDimensions>
+    <drawStyleCategory>Riimba_ChuteLines</drawStyleCategory>
     <rotatable>false</rotatable>
     <clearBuildingArea>false</clearBuildingArea>
     <leaveResourcesWhenKilled>false</leaveResourcesWhenKilled>

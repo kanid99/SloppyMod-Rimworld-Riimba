@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    How a chute is laid when the build tool is dragged. RimWorld 1.6 dropped the old
+    placingDraggableDimensions field for named draw styles; vanilla's line styles for walls and
+    conduits live in Core XML under names that are not exposed to code, so the chute brings its
+    own two, built on the same vanilla workers: a straight run, and a run with one bend.
+  -->
+
+  <DrawStyleDef>
+    <defName>Riimba_ChuteLine</defName>
+    <label>line</label>
+    <uiIconPath>UI/Designators/RiimbaDrawLine</uiIconPath>
+    <drawStyleType>Verse.DrawStyle_Line</drawStyleType>
+  </DrawStyleDef>
+
+  <DrawStyleDef>
+    <defName>Riimba_ChuteAngledLine</defName>
+    <label>angled line</label>
+    <uiIconPath>UI/Designators/RiimbaDrawAngledLine</uiIconPath>
+    <drawStyleType>Verse.DrawStyle_AngledLine</drawStyleType>
+  </DrawStyleDef>
+
+  <DrawStyleCategoryDef>
+    <defName>Riimba_ChuteLines</defName>
+    <styles>
+      <li>Riimba_ChuteAngledLine</li>
+      <li>Riimba_ChuteLine</li>
+    </styles>
+  </DrawStyleCategoryDef>
+
+</Defs>

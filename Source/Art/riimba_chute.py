@@ -157,6 +157,29 @@ def outlet():
     return finish(image, size, size)
 
 
+def draw_style_icons():
+    """The two drag styles in the build tool's style picker: a straight run and a run with
+    one bend. White line art on transparent, like the rest of RimWorld's designator icons."""
+    size = 64
+    ink = (232, 236, 240)
+    icons = {}
+
+    image, draw = new_canvas(size, size)
+    rect(draw, (10, 29, 54, 35), fill=ink, radius=2)
+    for x in (10, 48):
+        rect(draw, (x, 25, x + 6, 39), fill=ink, radius=2)
+    icons["RiimbaDrawLine"] = finish(image, size, size)
+
+    image, draw = new_canvas(size, size)
+    rect(draw, (12, 14, 18, 50), fill=ink, radius=2)
+    rect(draw, (12, 44, 52, 50), fill=ink, radius=2)
+    for box in ((8, 10, 22, 16), (46, 40, 52, 54)):
+        rect(draw, box, fill=ink, radius=2)
+    icons["RiimbaDrawAngledLine"] = finish(image, size, size)
+
+    return icons
+
+
 def verify_atlas(image):
     """Every tile has an arm at exactly the edges its bitmask names, and nowhere else."""
     alpha = image.split()[3]
@@ -201,6 +224,13 @@ def main():
     }
     for name, picture in outputs.items():
         path = os.path.join(OUT_DIR, f"{name}.png")
+        picture.save(path)
+        print(f"wrote {path}")
+
+    ui_dir = os.path.join("Mods", "TrashChute", "Textures", "UI", "Designators")
+    os.makedirs(ui_dir, exist_ok=True)
+    for name, picture in draw_style_icons().items():
+        path = os.path.join(ui_dir, f"{name}.png")
         picture.save(path)
         print(f"wrote {path}")
 
