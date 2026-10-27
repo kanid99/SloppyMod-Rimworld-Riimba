@@ -10,4 +10,8 @@
     <li>/</li>
     <li IfModActiveAll="OskarPotocki.VanillaFactionsExpanded.Core,VanillaExpanded.Recycling">Mods/TrashChute</li>
   </v1.6>
+  <v1.7>
+    <li>/</li>
+    <li IfModActiveAll="OskarPotocki.VanillaFactionsExpanded.Core,VanillaExpanded.Recycling">Mods/TrashChute</li>
+  </v1.7>
 </loadFolders>

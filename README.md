@@ -1,6 +1,6 @@
 # SloppyMods Riimba
 
-A semi-autonomous cleaning drone for RimWorld 1.6. Gestated at a mech gestator like any
+A semi-autonomous cleaning drone for RimWorld 1.6 and 1.7. Gestated at a mech gestator like any
 light mech, but driven by a control station rather than by a mechanitor: one station
 commands up to three units inside a radius you set - six to thirty tiles, paid for in power -
 charges them at its docking bays, and takes the waste they collect.
